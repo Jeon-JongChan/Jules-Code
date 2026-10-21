@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Jules Code</string>
+
+    <!-- Navigation & TopBar -->
+    <string name="nav_dashboard">대시보드</string>
+    <string name="nav_sessions">세션</string>
+    <string name="nav_sources">저장소</string>
+    <string name="nav_settings">설정</string>
+    <string name="nav_settings_api">설정</string>
+    <string name="top_sync_all">전체 동기화</string>
+    <string name="top_remaining_quota">남은 작업량</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_default_key_label">기본 Jules API 키</string>
+    <string name="onboarding_subtitle">자율형 비동기 코딩 에이전트 모바일 워크스페이스</string>
+    <string name="onboarding_desc">Google 계정 직접 로그인이 제한된 환경을 위해 Jules API 키(`X-Goog-Api-Key`)를 기기 내 Room DB에 안전하게 내장하여 동작합니다.</string>
+    <string name="onboarding_label_hint">프로필 별칭 (선택)</string>
+    <string name="onboarding_key_hint">Jules API Key 입력</string>
+    <string name="onboarding_save_start">API 키 저장 및 시작하기</string>
+    <string name="onboarding_demo_start">API 키 없이 데모 시뮬레이션 모드로 체험</string>
+    <string name="onboarding_get_key_link">jules.google.com/settings 에서 API 키 발급</string>
+
+    <!-- Dashboard -->
+    <string name="demo_banner_text">데모 샌드박스 모드 • 설정 탭에서 실제 Jules API 키를 연결할 수 있습니다.</string>
+    <string name="quota_banner_title">API 남은 작업량 (24h)</string>
+    <string name="quota_daily_format">오늘: %1$d/%2$d회</string>
+    <string name="quota_concurrent_format">동시: %1$d/%2$d개</string>
+    <string name="metric_active_vm">실행 중</string>
+    <string name="metric_awaiting_plan">승인 대기</string>
+    <string name="metric_completed_pr">완료/PR</string>
+    <string name="composer_headline">오늘 어떤 코딩 작업을 맡기시겠습니까?</string>
+    <string name="composer_repoless_dropdown">Repoless (격리 클라우드 VM)</string>
+    <string name="composer_set_title">제목 지정</string>
+    <string name="composer_pin_file">@파일 지정</string>
+    <string name="composer_title_label">작업 제목 (미입력 시 프롬프트 첫 줄로 자동 요약)</string>
+    <string name="composer_prompt_placeholder">Jules에게 맡길 작업을 설명하세요 (예: \'로그인 토큰 만료 시 재시도 로직 추가 및 테스트 작성\')...</string>
+    <string name="chip_plan_review">계획 먼저 검토 (Give me a plan)</string>
+    <string name="chip_auto_pr">자동 PR 생성</string>
+    <string name="chip_critic_agent">Critic Agent 코드검증</string>
+    <string name="chip_ci_fixer">CI Auto-Fixer</string>
+    <string name="btn_launch_with_plan">계획 생성 요청 (Code with Plan)</string>
+    <string name="btn_launch_agent">Jules 작업 시작 (Launch Agent)</string>
+    <string name="tab_recent_sessions">최근 세션 (%1$d)</string>
+    <string name="tab_scheduled_templates">예약 작업 &amp; 템플릿 (%1$d)</string>
+    <string name="empty_sessions_title">진행 중인 코딩 세션이 없습니다</string>
+    <string name="empty_sessions_subtitle">위 컴포저에 프롬프트를 입력하거나 빠른 제안 칩을 눌러 자율 코딩 세션을 시작하세요.</string>
+    <string name="scheduled_header">정기 점검(Scheduled) 및 반복 작업 자동화</string>
+    <string name="scheduled_add_btn">새 스케줄 추가</string>
+    <string name="template_fill_composer">컴포저에 채우기</string>
+    <string name="template_run_now">지금 실행</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_file_pin_title">@파일 컨텍스트 지정 (File Selector)</string>
+    <string name="dialog_file_pin_desc">Jules가 중점적으로 분석·수정할 저장소 내 파일 경로나 디렉터리를 지정합니다.</string>
+    <string name="dialog_file_pin_hint">예: src/main/AuthService.kt</string>
+    <string name="dialog_file_pin_confirm">프롬프트에 추가</string>
+    <string name="dialog_cancel">취소</string>
+    <string name="dialog_save">저장</string>
+    <string name="dialog_new_template_title">새 예약 작업(Scheduled) / 템플릿 추가</string>
+    <string name="dialog_new_template_name">작업 이름</string>
+    <string name="dialog_new_template_prompt">반복 실행할 프롬프트</string>
+    <string name="dialog_new_template_require_approval">실행 전 계획 승인 요청</string>
+    <string name="cadence_daily">매일</string>
+    <string name="cadence_weekly">매주</string>
+    <string name="cadence_manual">수동</string>
+    <string name="cadence_badge_daily">매일 정기 실행 (CRON: DAILY)</string>
+    <string name="cadence_badge_weekly">매주 정기 실행 (CRON: WEEKLY)</string>
+    <string name="cadence_badge_manual">수동 실행 템플릿 (MANUAL)</string>
+
+    <!-- Sessions List -->
+    <string name="sessions_search_placeholder">세션 제목, 프롬프트, 저장소 이름으로 검색...</string>
+    <string name="filter_all">전체 (%1$d)</string>
+    <string name="filter_active">진행 중</string>
+    <string name="filter_approval">계획 승인 대기</string>
+    <string name="filter_completed">완료됨</string>
+    <string name="filter_failed">실패</string>
+    <string name="empty_filtered_sessions_title">조건에 맞는 세션이 없습니다</string>
+    <string name="empty_filtered_sessions_subtitle">검색어나 상태 필터를 변경하거나 대시보드에서 새 작업을 시작해보세요.</string>
+
+    <!-- Sources -->
+    <string name="sources_title">연결된 GitHub 저장소 (Sources)</string>
+    <string name="sources_subtitle">Jules GitHub App이 설치된 저장소 목록과 저장소별 VM 환경 스크립트/Memory를 관리합니다.</string>
+    <string name="sources_github_btn">GitHub에서 Jules 저장소 권한 추가/설정</string>
+    <string name="sources_filter_placeholder">저장소(owner/repo) 필터링...</string>
+    <string name="empty_sources_title">표시할 저장소가 없습니다</string>
+    <string name="empty_sources_subtitle">GitHub에서 Jules 앱을 설치하거나 우측 상단 새로고침 버튼을 눌러 동기화하세요.</string>
+    <string name="source_env_configured">VM 환경 &amp; Memory 설정됨</string>
+    <string name="source_env_configure">VM 환경 &amp; Memory 설정</string>
+    <string name="source_open_github">GitHub 열기</string>
+    <string name="dialog_repo_config_title">%1$s 환경 &amp; Memory 설정</string>
+    <string name="dialog_repo_config_desc">Jules 웹의 Repository Setup Script, 환경 변수, Repository Memory(AGENTS.md 컨벤션)를 저장소별로 구성합니다. 세션 생성 시 클라우드 VM에 자동 주입됩니다.</string>
+    <string name="dialog_repo_script_label">초기 환경 구축 스크립트 (Setup Script)</string>
+    <string name="dialog_repo_env_label">환경 변수 (Environment Variables)</string>
+    <string name="dialog_repo_memory_label">Repository Memory / 코딩 컨벤션 (AGENTS.md)</string>
+
+    <!-- Settings -->
+    <string name="settings_language_title">앱 표시 언어 설정 (App Language)</string>
+    <string name="settings_language_subtitle">기본적으로 스마트폰의 국가/언어 설정을 자동으로 따라가며, 원하는 언어로 직접 고정할 수도 있습니다.</string>
+    <string name="lang_option_system">스마트폰 기본 언어 따라가기 (자동)</string>
+    <string name="lang_option_ko">한국어 (Korean)</string>
+    <string name="lang_option_en">영어 (English)</string>
+    <string name="settings_quota_title">API 남은 작업량 및 요금제 한도 (Quota)</string>
+    <string name="settings_quota_subtitle">Jules 공식 요금제(Free/Pro/Ultra) 기준 최근 24시간(Rolling 24h) 남은 작업량과 동시 실행 여유 슬롯을 계산합니다.</string>
+    <string name="quota_box_daily_title">남은 일일 작업 (24h)</string>
+    <string name="quota_box_daily_unit">회</string>
+    <string name="quota_box_concurrent_title">동시 실행 여유 슬롯</string>
+    <string name="quota_box_concurrent_unit">개</string>
+    <string name="settings_select_tier">내 계정 요금제 티어 선택</string>
+    <string name="settings_model_notify_title">기본 AI 모델 &amp; 에이전트 알림 설정</string>
+    <string name="settings_model_notify_subtitle">세션 생성 시 사용할 기본 Gemini 모델과 승인 대기/완료 알림 여부를 설정합니다.</string>
+    <string name="settings_notify_label">세션 계획 승인 대기 및 완료 시 알림</string>
+    <string name="settings_notify_desc">백그라운드 폴링 중 상태가 변경되면 즉시 알림 배너를 표시합니다.</string>
+    <string name="settings_apikey_title">내장 API 키 관리 (Room DB)</string>
+    <string name="settings_apikey_subtitle">구글 계정 로그인 없이도 다중 API 키 프로필을 기기에 저장하고 즉시 전환합니다.</string>
+    <string name="settings_new_key_alias">새 키 별칭 (예: 개인 계정, 업무용 키)</string>
+    <string name="settings_new_key_input">Jules API Key (`X-Goog-Api-Key`)</string>
+    <string name="settings_add_activate_key">API 키 추가 및 활성화</string>
+    <string name="settings_switch_demo">데모 모드 전환</string>
+    <string name="settings_saved_keys_count">저장된 API 키 프로필 (%1$d)</string>
+    <string name="settings_switch_btn">전환</string>
+    <string name="settings_commit_title">Git 커밋 작성자 귀속 모드 (Commit Authoring)</string>
+    <string name="settings_commit_subtitle">Jules가 GitHub에 커밋 및 PR을 푸시할 때 작성자 표기 방식을 설정합니다.</string>
+    <string name="commit_co_authored">공동 작성자 표기 (Jules + 사용자 Co-authored-by)</string>
+    <string name="commit_jules_only">Jules 단독 작성자 표기 (google-labs-jules[bot])</string>
+    <string name="commit_user_only">내 GitHub 계정 단독 표기</string>
+    <string name="settings_web_console_title">Jules 공식 웹 콘솔 &amp; API 키 발급</string>
+    <string name="settings_open_web_btn">jules.google.com/settings 열기</string>
+
+    <!-- Session Detail -->
+    <string name="detail_default_title">세션 상세</string>
+    <string name="detail_followup_placeholder">Jules에게 후속 지시 또는 코드 수정 요청...</string>
+    <string name="detail_approval_banner_title">실행 계획 승인이 필요합니다</string>
+    <string name="detail_approval_banner_desc">계획을 검토한 뒤 승인하면 클라우드 VM에서 코드 패치를 시작합니다.</string>
+    <string name="detail_approve_btn">계획 승인</string>
+    <string name="detail_pr_banner_title">GitHub Pull Request 생성 완료</string>
+    <string name="detail_open_pr_btn">PR 열기</string>
+    <string name="detail_repoless_banner">격리 클라우드 VM(Repoless) 결과물: Diff 탭에서 .patch 공유 또는 웹에서 GitHub로 Publish 가능</string>
+    <string name="detail_publish_github_btn">GitHub 반영</string>
+    <string name="detail_tab_timeline">활동 타임라인 (%1$d)</string>
+    <string name="detail_tab_plan">실행 계획 (%1$d)</string>
+    <string name="detail_tab_diff">코드 Diff (%1$d)</string>
+    <string name="detail_tab_bash">터미널 로그 (%1$d)</string>
+    <string name="empty_timeline_title">아직 기록된 액티비티가 없습니다</string>
+    <string name="empty_timeline_subtitle">Jules가 클라우드 VM을 준비하고 작업을 시작하면 실시간으로 스트리밍됩니다.</string>
+    <string name="empty_plan_title">생성된 실행 계획이 없습니다</string>
+    <string name="empty_plan_subtitle">에이전트가 수립한 단계별 계획(`planGenerated`)이 이곳에 표시됩니다.</string>
+    <string name="empty_diff_title">아직 코드 변경셋(ChangeSet)이 없습니다</string>
+    <string name="empty_diff_subtitle">Jules가 코드를 수정하면 Unified Diff 하이라이팅 뷰어가 표시됩니다.</string>
+    <string name="empty_bash_title">터미널 실행 로그가 없습니다</string>
+    <string name="empty_bash_subtitle">클라우드 VM에서 실행된 빌드/테스트 명령어와 표준 출력이 이곳에 기록됩니다.</string>
+
+    <!-- States -->
+    <string name="state_queued">대기열 등록됨</string>
+    <string name="state_planning">계획 수립 중</string>
+    <string name="state_awaiting_plan">계획 승인 대기</string>
+    <string name="state_awaiting_feedback">사용자 피드백 대기</string>
+    <string name="state_in_progress">코드 작업 중</string>
+    <string name="state_paused">일시중지됨</string>
+    <string name="state_completed">작업 완료</string>
+    <string name="state_failed">실패</string>
+
+    <!-- Quick Prompts & Model/Tier Descriptions -->
+    <string name="quick_bug_title">버그 분석 및 수정</string>
+    <string name="quick_bug_prompt">최근 발생한 예외/오류 원인을 추적해 근본 원인을 수정하고 회귀 단위 테스트를 추가해줘.</string>
+    <string name="quick_test_title">단위 테스트 보강</string>
+    <string name="quick_test_prompt">핵심 비즈니스 로직 모듈의 엣지 케이스 단위 테스트를 추가하고 전체 테스트를 통과시켜줘.</string>
+    <string name="quick_refactor_title">리팩토링 &amp; 정리</string>
+    <string name="quick_refactor_prompt">불필요한 중복 코드와 경고를 정리하고 가독성 및 성능을 개선해줘.</string>
+    <string name="quick_pr_title">PR 코드 리뷰 반영</string>
+    <string name="quick_pr_prompt">현재 브랜치의 코드 변경사항을 점검하고 보안/성능 이슈를 패치해줘.</string>
+    <string name="tier_free_label">Free (기본 15회/일 • 동시 3개)</string>
+    <string name="tier_pro_label">Google AI Pro (100회/일 • 동시 15개)</string>
+    <string name="tier_ultra_label">Google AI Ultra (300회/일 • 동시 60개)</string>
+    <string name="model_31_pro_desc">깊은 추론 &amp; 대규모 아키텍처 리팩토링 (Pro/Ultra 권장)</string>
+    <string name="model_36_flash_desc">초고속 코드 패치, 단위 테스트 생성 및 빠른 반복 작업</string>
+    <string name="detail_plan_steps_format">실행 계획 (%1$d단계)</string>
+    <string name="detail_failed_reason">세션 실패 사유: %1$s</string>
+</resources>
+

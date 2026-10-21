@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Jules Code</string>
+
+    <!-- Navigation & TopBar -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_sessions">Sessions</string>
+    <string name="nav_sources">Sources</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_settings_api">Settings</string>
+    <string name="top_sync_all">Sync All</string>
+    <string name="top_remaining_quota">Remaining Quota</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_default_key_label">Default Jules API Key</string>
+    <string name="onboarding_subtitle">Autonomous Async Coding Agent Workspace</string>
+    <string name="onboarding_desc">Built-in Room DB safely stores your Jules API Key (`X-Goog-Api-Key`) for mobile environments where direct Google OAuth login is restricted.</string>
+    <string name="onboarding_label_hint">Profile Alias (Optional)</string>
+    <string name="onboarding_key_hint">Enter Jules API Key</string>
+    <string name="onboarding_save_start">Save API Key &amp; Start</string>
+    <string name="onboarding_demo_start">Try Demo Simulation Mode</string>
+    <string name="onboarding_get_key_link">Get API Key at jules.google.com/settings</string>
+
+    <!-- Dashboard -->
+    <string name="demo_banner_text">Demo Sandbox Mode • Connect your real Jules API key in the Settings tab.</string>
+    <string name="quota_banner_title">API Quota (24h)</string>
+    <string name="quota_daily_format">Daily: %1$d/%2$d</string>
+    <string name="quota_concurrent_format">Slots: %1$d/%2$d</string>
+    <string name="metric_active_vm">Active</string>
+    <string name="metric_awaiting_plan">Approval</string>
+    <string name="metric_completed_pr">Done/PR</string>
+    <string name="composer_headline">What coding task can Jules tackle today?</string>
+    <string name="composer_repoless_dropdown">Repoless (Isolated Cloud VM)</string>
+    <string name="composer_set_title">Set Title</string>
+    <string name="composer_pin_file">@Pin File</string>
+    <string name="composer_title_label">Task Title (Auto-summarized from prompt if blank)</string>
+    <string name="composer_prompt_placeholder">Describe the coding task for Jules (e.g., \'Add token refresh retry logic and unit tests\')...</string>
+    <string name="chip_plan_review">Give me a plan</string>
+    <string name="chip_auto_pr">Auto Create PR</string>
+    <string name="chip_critic_agent">Critic Agent Review</string>
+    <string name="chip_ci_fixer">CI Auto-Fixer</string>
+    <string name="btn_launch_with_plan">Request Plan (Code with Plan)</string>
+    <string name="btn_launch_agent">Start Jules Task (Launch Agent)</string>
+    <string name="tab_recent_sessions">Recent Sessions (%1$d)</string>
+    <string name="tab_scheduled_templates">Scheduled &amp; Templates (%1$d)</string>
+    <string name="empty_sessions_title">No Active Coding Sessions</string>
+    <string name="empty_sessions_subtitle">Enter a prompt above or tap a quick suggestion chip to launch an autonomous coding session.</string>
+    <string name="scheduled_header">Scheduled Maintenance &amp; Recurring Automation</string>
+    <string name="scheduled_add_btn">Add Schedule</string>
+    <string name="template_fill_composer">Fill Composer</string>
+    <string name="template_run_now">Run Now</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_file_pin_title">@Pin File Context (File Selector)</string>
+    <string name="dialog_file_pin_desc">Specify a file path or directory in the repository for Jules to focus on.</string>
+    <string name="dialog_file_pin_hint">e.g. src/main/AuthService.kt</string>
+    <string name="dialog_file_pin_confirm">Add to Prompt</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_save">Save</string>
+    <string name="dialog_new_template_title">Add Scheduled Task / Template</string>
+    <string name="dialog_new_template_name">Task Name</string>
+    <string name="dialog_new_template_prompt">Recurring Prompt</string>
+    <string name="dialog_new_template_require_approval">Require plan approval before execution</string>
+    <string name="cadence_daily">Daily</string>
+    <string name="cadence_weekly">Weekly</string>
+    <string name="cadence_manual">Manual</string>
+    <string name="cadence_badge_daily">Daily Run (CRON: DAILY)</string>
+    <string name="cadence_badge_weekly">Weekly Run (CRON: WEEKLY)</string>
+    <string name="cadence_badge_manual">Manual Template (MANUAL)</string>
+
+    <!-- Sessions List -->
+    <string name="sessions_search_placeholder">Search by title, prompt, or repository...</string>
+    <string name="filter_all">All (%1$d)</string>
+    <string name="filter_active">Active</string>
+    <string name="filter_approval">Awaiting Approval</string>
+    <string name="filter_completed">Completed</string>
+    <string name="filter_failed">Failed</string>
+    <string name="empty_filtered_sessions_title">No Matching Sessions</string>
+    <string name="empty_filtered_sessions_subtitle">Try changing your search query or status filter, or start a new task on the Dashboard.</string>
+
+    <!-- Sources -->
+    <string name="sources_title">Connected GitHub Repositories (Sources)</string>
+    <string name="sources_subtitle">Manage repositories with the Jules GitHub App installed, plus per-repo VM scripts &amp; Memory.</string>
+    <string name="sources_github_btn">Configure Jules Repository Access on GitHub</string>
+    <string name="sources_filter_placeholder">Filter repositories (owner/repo)...</string>
+    <string name="empty_sources_title">No Repositories Found</string>
+    <string name="empty_sources_subtitle">Install the Jules GitHub App or tap the refresh icon at the top right.</string>
+    <string name="source_env_configured">VM Env &amp; Memory Configured</string>
+    <string name="source_env_configure">Configure VM Env &amp; Memory</string>
+    <string name="source_open_github">Open GitHub</string>
+    <string name="dialog_repo_config_title">%1$s Env &amp; Memory Setup</string>
+    <string name="dialog_repo_config_desc">Configure Repository Setup Script, Environment Variables, and Repository Memory (AGENTS.md conventions). Automatically injected into Cloud VMs.</string>
+    <string name="dialog_repo_script_label">Environment Setup Script</string>
+    <string name="dialog_repo_env_label">Environment Variables</string>
+    <string name="dialog_repo_memory_label">Repository Memory / Conventions (AGENTS.md)</string>
+
+    <!-- Settings -->
+    <string name="settings_language_title">App Language / 언어 설정</string>
+    <string name="settings_language_subtitle">Follow smartphone country/locale by default, or manually select Korean / English.</string>
+    <string name="lang_option_system">Follow Device Default (Auto)</string>
+    <string name="lang_option_ko">한국어 (Korean)</string>
+    <string name="lang_option_en">English</string>
+    <string name="settings_quota_title">API Remaining Quota &amp; Plan Limits</string>
+    <string name="settings_quota_subtitle">Calculates Rolling 24h remaining tasks and concurrent active slots based on official Jules tiers (Free/Pro/Ultra).</string>
+    <string name="quota_box_daily_title">Remaining Daily (24h)</string>
+    <string name="quota_box_daily_unit">tasks</string>
+    <string name="quota_box_concurrent_title">Available Concurrent</string>
+    <string name="quota_box_concurrent_unit">slots</string>
+    <string name="settings_select_tier">Select Account Plan Tier</string>
+    <string name="settings_model_notify_title">Default AI Model &amp; Agent Notifications</string>
+    <string name="settings_model_notify_subtitle">Configure the default Gemini model for new sessions and status change notifications.</string>
+    <string name="settings_notify_label">Notify on Plan Approval &amp; Completion</string>
+    <string name="settings_notify_desc">Show immediate notification banners when session state changes during polling.</string>
+    <string name="settings_apikey_title">Built-in API Key Manager (Room DB)</string>
+    <string name="settings_apikey_subtitle">Store and switch multiple API key profiles locally without Google OAuth login.</string>
+    <string name="settings_new_key_alias">New Key Alias (e.g., Personal, Work)</string>
+    <string name="settings_new_key_input">Jules API Key (`X-Goog-Api-Key`)</string>
+    <string name="settings_add_activate_key">Add &amp; Activate Key</string>
+    <string name="settings_switch_demo">Demo Mode</string>
+    <string name="settings_saved_keys_count">Saved API Key Profiles (%1$d)</string>
+    <string name="settings_switch_btn">Switch</string>
+    <string name="settings_commit_title">Git Commit Authoring Mode</string>
+    <string name="settings_commit_subtitle">Choose how commit authors are attributed when Jules pushes commits and PRs.</string>
+    <string name="commit_co_authored">Co-authored (Jules + User Co-authored-by)</string>
+    <string name="commit_jules_only">Jules Only (google-labs-jules[bot])</string>
+    <string name="commit_user_only">My GitHub Account Only</string>
+    <string name="settings_web_console_title">Jules Web Console &amp; Get API Key</string>
+    <string name="settings_open_web_btn">Open jules.google.com/settings</string>
+
+    <!-- Session Detail -->
+    <string name="detail_default_title">Session Detail</string>
+    <string name="detail_followup_placeholder">Send follow-up instructions or code changes to Jules...</string>
+    <string name="detail_approval_banner_title">Execution Plan Approval Required</string>
+    <string name="detail_approval_banner_desc">Review and approve the plan so Jules can start patching code in the Cloud VM.</string>
+    <string name="detail_approve_btn">Approve Plan</string>
+    <string name="detail_pr_banner_title">GitHub Pull Request Created</string>
+    <string name="detail_open_pr_btn">Open PR</string>
+    <string name="detail_repoless_banner">Repoless Cloud VM output: Share .patch from Diff tab or Publish to GitHub on Web</string>
+    <string name="detail_publish_github_btn">Publish to GitHub</string>
+    <string name="detail_tab_timeline">Timeline (%1$d)</string>
+    <string name="detail_tab_plan">Plan (%1$d)</string>
+    <string name="detail_tab_diff">Code Diff (%1$d)</string>
+    <string name="detail_tab_bash">Terminal (%1$d)</string>
+    <string name="empty_timeline_title">No Activities Recorded Yet</string>
+    <string name="empty_timeline_subtitle">Activities stream in real time once Jules provisions the Cloud VM.</string>
+    <string name="empty_plan_title">No Execution Plan Generated</string>
+    <string name="empty_plan_subtitle">Step-by-step plans (`planGenerated`) created by the agent appear here.</string>
+    <string name="empty_diff_title">No Code ChangeSets Yet</string>
+    <string name="empty_diff_subtitle">Unified Diff syntax viewer will appear once Jules modifies files.</string>
+    <string name="empty_bash_title">No Terminal Output Logs</string>
+    <string name="empty_bash_subtitle">Build/test commands and stdout from the Cloud VM are recorded here.</string>
+
+    <!-- States -->
+    <string name="state_queued">Queued</string>
+    <string name="state_planning">Planning</string>
+    <string name="state_awaiting_plan">Awaiting Approval</string>
+    <string name="state_awaiting_feedback">Awaiting Feedback</string>
+    <string name="state_in_progress">In Progress</string>
+    <string name="state_paused">Paused</string>
+    <string name="state_completed">Completed</string>
+    <string name="state_failed">Failed</string>
+
+    <!-- Quick Prompts & Model/Tier Descriptions -->
+    <string name="quick_bug_title">Bug Analysis &amp; Fix</string>
+    <string name="quick_bug_prompt">Trace the root cause of recent exceptions/errors, patch the fix, and add regression unit tests.</string>
+    <string name="quick_test_title">Add Unit Tests</string>
+    <string name="quick_test_prompt">Add edge-case unit tests for core business logic modules and verify the entire test suite passes.</string>
+    <string name="quick_refactor_title">Refactor &amp; Clean Up</string>
+    <string name="quick_refactor_prompt">Remove redundant code and compiler warnings, and improve readability and performance.</string>
+    <string name="quick_pr_title">Address PR Review</string>
+    <string name="quick_pr_prompt">Inspect code changes on the current branch and patch any security or performance issues.</string>
+    <string name="tier_free_label">Free (15 tasks/day • 3 concurrent)</string>
+    <string name="tier_pro_label">Google AI Pro (100 tasks/day • 15 concurrent)</string>
+    <string name="tier_ultra_label">Google AI Ultra (300 tasks/day • 60 concurrent)</string>
+    <string name="model_31_pro_desc">Deep reasoning &amp; large-scale architecture refactoring (Pro/Ultra recommended)</string>
+    <string name="model_36_flash_desc">Ultra-fast code patching, unit test generation &amp; rapid iteration</string>
+    <string name="detail_plan_steps_format">Execution Plan (%1$d steps)</string>
+    <string name="detail_failed_reason">Session failed: %1$s</string>
+</resources>

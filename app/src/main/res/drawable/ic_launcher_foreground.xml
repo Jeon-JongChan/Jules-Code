@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Jules 공식 문어(Octopus) 마스코트 몸통 및 4개의 다리 (공식 브랜드 컬러 #715CD7) -->
+    <path
+        android:fillColor="#715CD7"
+        android:pathData="
+            M 54,25
+            C 41.85,25 32,34.85 32,47
+            L 32,70
+            C 32,73.31 29.31,76 26,76
+            C 23.79,76 22,74.21 22,72
+            L 22,69
+            A 3.5,3.5 0 0,0 15,69
+            L 15,72
+            C 15,78.08 19.92,83 26,83
+            C 33.18,83 39,77.18 39,70
+            L 39,61
+            L 44,61
+            L 44,72.5
+            A 3.5,3.5 0 0,0 51,72.5
+            L 51,61
+            L 57,61
+            L 57,72.5
+            A 3.5,3.5 0 0,0 64,72.5
+            L 64,61
+            L 69,61
+            L 69,70
+            C 69,77.18 74.82,83 82,83
+            C 88.08,83 93,78.08 93,72
+            L 93,69
+            A 3.5,3.5 0 0,0 86,69
+            L 86,72
+            C 86,74.21 84.21,76 82,76
+            C 78.69,76 76,73.31 76,70
+            L 76,47
+            C 76,34.85 66.15,25 54,25
+            Z" />
+
+    <!-- 왼쪽 눈 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 43.5,46 m -4.2,0 a 4.2,4.2 0 1,0 8.4,0 a 4.2,4.2 0 1,0 -8.4,0" />
+
+    <!-- 오른쪽 눈 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 64.5,46 m -4.2,0 a 4.2,4.2 0 1,0 8.4,0 a 4.2,4.2 0 1,0 -8.4,0" />
+</vector>
+
