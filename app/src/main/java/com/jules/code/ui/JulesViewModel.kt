@@ -8,9 +8,12 @@ import com.jules.code.data.local.*
 import com.jules.code.data.model.*
 import com.jules.code.data.remote.JulesApiClient
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
 
 /**
  * Jules 앱의 전체 상태와 비즈니스 로직을 관리하는 메인 ViewModel입니다.
@@ -72,6 +75,15 @@ class JulesViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private var pollingJob: Job? = null
+
+    /**
+     * 채팅 전송 직후 서버 `listActivities` 응답에 아직 반영되지 않았더라도
+     * 화면에서 0ms(즉시)로 사라지지 않고 유지되도록 관리하는 낙관적(Optimistic) 사용자 메시지 버퍼입니다.
+     */
+    private val pendingOptimisticMessages = mutableMapOf<String, MutableList<JulesActivity>>()
+
+    /** 세션별 메모리 내 액티비티 캐시 (재진입 시 0ms 렌더링) */
+    private val inMemoryActivitiesCache = mutableMapOf<String, List<JulesActivity>>()
 
     init {
         // 기본 프롬프트 템플릿이 없으면 초기 템플릿 시드 생성
@@ -170,29 +182,32 @@ class JulesViewModel(
         }
         viewModelScope.launch {
             _isLoading.value = true
-            val sourcesRes = api.listSources(key)
-            sourcesRes.onSuccess { resp ->
-                val entities = resp.sources.map { s ->
-                    CachedSourceEntity(
-                        name = s.name.ifBlank { "sources/${s.id}" },
-                        id = s.id.ifBlank { s.name.removePrefix("sources/") },
-                        owner = s.githubRepo?.owner ?: s.displayName.substringBefore("/", "github"),
-                        repo = s.githubRepo?.repo ?: s.displayName.substringAfter("/", s.displayName),
-                        isPrivate = s.githubRepo?.isPrivate ?: false,
-                        defaultBranch = s.defaultBranchName,
-                        branchesCsv = s.availableBranches.joinToString(",")
-                    )
-                }
-                dao.upsertSources(entities)
-            }
+            coroutineScope {
+                val sourcesDeferred = async { api.listSources(key) }
+                val sessionsDeferred = async { api.listSessions(key) }
 
-            val sessionsRes = api.listSessions(key)
-            sessionsRes.onSuccess { resp ->
-                val existingPinned = sessions.value.associate { it.sessionId to it.isPinned }
-                val entities = resp.sessions.map { it.toEntity(existingPinned[it.sessionId] ?: false) }
-                dao.upsertSessions(entities)
-            }.onFailure { err ->
-                showMessage("동기화 실패: ${err.message}")
+                sourcesDeferred.await().onSuccess { resp ->
+                    val entities = resp.sources.map { s ->
+                        CachedSourceEntity(
+                            name = s.name.ifBlank { "sources/${s.id}" },
+                            id = s.id.ifBlank { s.name.removePrefix("sources/") },
+                            owner = s.githubRepo?.owner ?: s.displayName.substringBefore("/", "github"),
+                            repo = s.githubRepo?.repo ?: s.displayName.substringAfter("/", s.displayName),
+                            isPrivate = s.githubRepo?.isPrivate ?: false,
+                            defaultBranch = s.defaultBranchName,
+                            branchesCsv = s.availableBranches.joinToString(",")
+                        )
+                    }
+                    dao.upsertSources(entities)
+                }
+
+                sessionsDeferred.await().onSuccess { resp ->
+                    val existingPinned = sessions.value.associate { it.sessionId to it.isPinned }
+                    val entities = resp.sessions.map { it.toEntity(existingPinned[it.sessionId] ?: false) }
+                    dao.upsertSessions(entities)
+                }.onFailure { err ->
+                    showMessage("동기화 실패: ${err.message}")
+                }
             }
             _isLoading.value = false
         }
@@ -289,6 +304,15 @@ class JulesViewModel(
             api.createSession(key, req)
                 .onSuccess { created ->
                     dao.upsertSessions(listOf(created.toEntity(false)))
+                    _selectedSessionDetail.value = created
+                    val initialUserAct = JulesActivity(
+                        id = "optimistic-init-${created.sessionId}",
+                        originator = "user",
+                        description = if (responseLangCode == "ko") "작업 프롬프트 제출" else "Task Prompt Submitted",
+                        createTime = created.createTime.ifBlank { java.time.Instant.now().toString() },
+                        userMessaged = MessageEvent(message = prompt.trim())
+                    )
+                    pendingOptimisticMessages.getOrPut(created.sessionId) { mutableListOf() }.add(initialUserAct)
                     _isLoading.value = false
                     showMessage("Jules 세션이 생성되었습니다 (${getModelDisplayName(modelId)}).")
                     openSession(created.sessionId)
@@ -302,19 +326,53 @@ class JulesViewModel(
     }
 
     /**
-     * 특정 세션을 선택하여 상세 정보 및 액티비티 스트림 폴링을 시작합니다.
+     * 특정 세션을 선택하여 로컬/메모리 캐시를 0ms로 즉시 표시하고,
+     * 병렬(Parallel) 백그라운드 스트림 폴링을 시작합니다.
      */
     fun openSession(sessionId: String) {
+        val isSwitchingSession = _selectedSessionId.value != sessionId
         _selectedSessionId.value = sessionId
+
+        // 1. 메모리 내 세션 리스트 및 액티비티 캐시에서 즉시(0ms) 바인딩하여 빈 화면 대기 제거
+        sessions.value.find { it.sessionId == sessionId }?.let { cachedEntity ->
+            if (isSwitchingSession || _selectedSessionDetail.value == null) {
+                _selectedSessionDetail.value = cachedEntity.toModel()
+            }
+        }
+        val memActs = inMemoryActivitiesCache[sessionId]
+        if (memActs != null) {
+            _activities.value = mergeActivitiesWithOptimistic(sessionId, memActs)
+        } else if (isSwitchingSession) {
+            _activities.value = pendingOptimisticMessages[sessionId]?.toList() ?: emptyList()
+        }
+
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
+            // 2. Room DB에 캐시된 이전 액티비티가 있으면 네트워크 응답 전에 먼저 로드
+            if (memActs == null) {
+                dao.getCachedActivities(sessionId)?.let { cachedRow ->
+                    runCatching {
+                        api.json.decodeFromString<List<JulesActivity>>(cachedRow.activitiesJson)
+                    }.onSuccess { diskActs ->
+                        if (diskActs.isNotEmpty() && _selectedSessionId.value == sessionId) {
+                            inMemoryActivitiesCache[sessionId] = diskActs
+                            _activities.value = mergeActivitiesWithOptimistic(sessionId, diskActs)
+                        }
+                    }
+                }
+            }
+
+            // 3. 실시간 고속 폴링 (진행 중이거나 낙관적 메시지 대기 중에는 2초 간격)
             while (true) {
                 loadSessionDetailAndActivities(sessionId)
                 val currentState = _selectedSessionDetail.value?.state ?: ""
-                if (currentState in listOf("COMPLETED", "FAILED", "PAUSED") || activeApiKey.value?.apiKey == DEMO_API_KEY) {
+                val hasPending = !pendingOptimisticMessages[sessionId].isNullOrEmpty()
+                if ((!hasPending && currentState in listOf("COMPLETED", "FAILED", "PAUSED")) ||
+                    activeApiKey.value?.apiKey == DEMO_API_KEY
+                ) {
                     break
                 }
-                delay(5_000)
+                delay(if (hasPending) 1_500L else 2_500L)
             }
         }
     }
@@ -329,25 +387,95 @@ class JulesViewModel(
         }
     }
 
+    /**
+     * `getSession`과 `listActivities`를 직렬이 아닌 `async` 병렬로 동시에 호출하여
+     * 타임라인 로딩 지연을 절반 이하로 단축합니다.
+     */
     private suspend fun loadSessionDetailAndActivities(sessionId: String) {
         val key = activeApiKey.value?.apiKey ?: return
         if (key == DEMO_API_KEY) {
             val cached = dao.getCachedSession(sessionId)
             if (cached != null) {
                 _selectedSessionDetail.value = cached.toModel()
-                _activities.value = buildDemoActivities(cached)
+                if (inMemoryActivitiesCache[sessionId].isNullOrEmpty()) {
+                    val demoActs = buildDemoActivities(cached)
+                    inMemoryActivitiesCache[sessionId] = demoActs
+                    _activities.value = demoActs
+                }
             }
             return
         }
 
-        api.getSession(key, sessionId).onSuccess { session ->
-            _selectedSessionDetail.value = session
-            val pinned = dao.getCachedSession(sessionId)?.isPinned ?: false
-            dao.upsertSessions(listOf(session.toEntity(pinned)))
+        coroutineScope {
+            val sessionDeferred = async { api.getSession(key, sessionId) }
+            val activitiesDeferred = async { api.listActivities(key, sessionId) }
+
+            // 액티비티와 세션 상세 중 먼저 도착하는 쪽부터 즉시 UI에 반영
+            launch {
+                sessionDeferred.await().onSuccess { session ->
+                    if (_selectedSessionId.value == sessionId) {
+                        _selectedSessionDetail.value = session
+                    }
+                    val pinned = dao.getCachedSession(sessionId)?.isPinned ?: false
+                    dao.upsertSessions(listOf(session.toEntity(pinned)))
+                }
+            }
+
+            launch {
+                activitiesDeferred.await().onSuccess { actResp ->
+                    val rawServerActs = actResp.activities
+                    val merged = mergeActivitiesWithOptimistic(sessionId, rawServerActs)
+                    inMemoryActivitiesCache[sessionId] = rawServerActs
+                    if (_selectedSessionId.value == sessionId) {
+                        _activities.value = merged
+                    }
+                    runCatching {
+                        dao.upsertCachedActivities(
+                            CachedSessionActivitiesEntity(
+                                sessionId = sessionId,
+                                activitiesJson = api.json.encodeToString(rawServerActs)
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 서버에서 내려온 액티비티 목록에서 프롬프트 내부 컨텍스트 꼬리표(`[Jules Agent Execution Context]`, `[언어 설정: ...]`)를
+     * 깔끔하게 제거하여 표시하고, 아직 서버 인덱싱 전인 낙관적(Optimistic) 사용자 채팅을 유지합니다.
+     */
+    internal fun mergeActivitiesWithOptimistic(
+        sessionId: String,
+        serverActivities: List<JulesActivity>
+    ): List<JulesActivity> {
+        val cleanedServer = serverActivities.map { act ->
+            val rawUser = act.resolvedUserMessage
+            if (rawUser != null) {
+                val cleanMsg = stripInternalDirectives(rawUser)
+                act.copy(
+                    userMessaged = MessageEvent(message = cleanMsg),
+                    userMessage = null
+                )
+            } else {
+                act
+            }
         }
 
-        api.listActivities(key, sessionId).onSuccess { actResp ->
-            _activities.value = actResp.activities
+        val pendingList = pendingOptimisticMessages[sessionId]
+        if (pendingList.isNullOrEmpty()) return cleanedServer
+
+        val serverUserTexts = cleanedServer.mapNotNull { it.resolvedUserMessage?.trim() }.toSet()
+        pendingList.removeAll { opt ->
+            val optText = opt.resolvedUserMessage?.trim().orEmpty()
+            optText.isEmpty() || serverUserTexts.any { srv -> srv == optText || srv.startsWith(optText) }
+        }
+
+        return if (pendingList.isEmpty()) {
+            cleanedServer
+        } else {
+            cleanedServer + pendingList
         }
     }
 
@@ -389,50 +517,63 @@ class JulesViewModel(
 
     /**
      * 진행 중인 세션에 후속 프롬프트/피드백 메시지를 전송합니다.
-     * 설정된 앱 표시 언어(또는 스마트폰 기본 언어)로 응답하도록 언어 지시어를 함께 전달합니다.
+     * 전송 버튼을 누르는 즉시(0ms) 낙관적(Optimistic) UI로 타임라인에 채팅 버블을 먼저 추가하고,
+     * 백그라운드로 API 전송 및 고속 폴링을 수행하여 5초 대기 지연을 완전히 제거합니다.
      */
     fun sendMessage(sessionId: String, message: String) {
-        if (message.isBlank()) return
+        val cleanInput = message.trim()
+        if (cleanInput.isEmpty()) return
         val key = activeApiKey.value?.apiKey ?: return
         val langCode = JulesLocaleManager.resolveLocale(preferences.value["app_language"]).language
-        val enrichedMessage = buildLocalizedFollowUpMessage(message.trim(), langCode)
-        viewModelScope.launch {
-            if (key == DEMO_API_KEY) {
-                val current = _activities.value.toMutableList()
-                current.add(
-                    JulesActivity(
-                        id = "user-${System.currentTimeMillis()}",
-                        originator = "user",
-                        description = "사용자 메시지",
-                        createTime = "방금 전",
-                        userMessaged = MessageEvent(message = message.trim())
-                    )
-                )
-                current.add(
-                    JulesActivity(
-                        id = "agent-${System.currentTimeMillis() + 1}",
-                        originator = "agent",
-                        description = "Jules 응답",
-                        createTime = "방금 전",
-                        agentMessaged = MessageEvent(
-                            message = if (langCode == "ko") {
-                                "요청하신 추가 지시사항(\"${message.trim()}\")을 반영하여 패치와 테스트를 업데이트했습니다."
-                            } else {
-                                "Applied your follow-up instructions (\"${message.trim()}\") and updated the patch and tests."
-                            }
-                        )
-                    )
-                )
-                _activities.value = current
-                return@launch
-            }
+        val enrichedMessage = buildLocalizedFollowUpMessage(cleanInput, langCode)
 
+        // 1. 낙관적(Optimistic) 사용자 메시지 즉시(0ms) 타임라인 반영
+        val nowIso = java.time.Instant.now().toString()
+        val optimisticUserAct = JulesActivity(
+            id = "optimistic-user-${System.currentTimeMillis()}",
+            originator = "user",
+            description = if (langCode == "ko") "전송됨" else "Sent",
+            createTime = nowIso,
+            userMessaged = MessageEvent(message = cleanInput)
+        )
+
+        if (key == DEMO_API_KEY) {
+            val current = _activities.value.toMutableList()
+            current.add(optimisticUserAct.copy(createTime = "방금 전"))
+            current.add(
+                JulesActivity(
+                    id = "agent-${System.currentTimeMillis() + 1}",
+                    originator = "agent",
+                    description = "Jules 응답",
+                    createTime = "방금 전",
+                    agentMessaged = MessageEvent(
+                        message = if (langCode == "ko") {
+                            "요청하신 추가 지시사항(\"$cleanInput\")을 반영하여 패치와 테스트를 업데이트했습니다."
+                        } else {
+                            "Applied your follow-up instructions (\"$cleanInput\") and updated the patch and tests."
+                        }
+                    )
+                )
+            )
+            inMemoryActivitiesCache[sessionId] = current
+            _activities.value = current
+            return
+        }
+
+        val sessionPending = pendingOptimisticMessages.getOrPut(sessionId) { mutableListOf() }
+        sessionPending.add(optimisticUserAct)
+        _activities.value = _activities.value + optimisticUserAct
+
+        // 2. 백그라운드 비동기 전송 및 즉시 폴링 루프 깨우기
+        viewModelScope.launch {
             api.sendMessage(key, sessionId, enrichedMessage)
                 .onSuccess {
-                    showMessage("메시지를 전송했습니다.")
-                    loadSessionDetailAndActivities(sessionId)
+                    // 전송 성공 즉시 폴링 주기를 1.5초로 단축하여 에이전트 응답을 빠르게 수신
+                    openSession(sessionId)
                 }
                 .onFailure { err ->
+                    pendingOptimisticMessages[sessionId]?.removeAll { it.id == optimisticUserAct.id }
+                    _activities.value = _activities.value.filterNot { it.id == optimisticUserAct.id }
                     showMessage("메시지 전송 실패: ${err.message}")
                 }
         }
@@ -450,6 +591,9 @@ class JulesViewModel(
                 }
             }
             dao.deleteCachedSession(sessionId)
+            dao.deleteCachedActivities(sessionId)
+            inMemoryActivitiesCache.remove(sessionId)
+            pendingOptimisticMessages.remove(sessionId)
             if (_selectedSessionId.value == sessionId) {
                 _selectedSessionId.value = null
                 _selectedSessionDetail.value = null
@@ -841,6 +985,18 @@ class JulesViewModel(
                 "[Language Setting: Please respond and write progress updates in English.]"
             }
             return "$message\n\n$langRule"
+        }
+
+        /**
+         * 타임라인에 표시할 사용자 메시지에서 내부 자동 주입 지시어(`[Jules Agent Execution Context]`, `[언어 설정: ...]`)를 제거하여
+         * 사용자가 실제로 입력한 순수 프롬프트만 깔끔하게 반환합니다.
+         */
+        fun stripInternalDirectives(rawMessage: String): String {
+            return rawMessage
+                .substringBefore("\n\n---\n[Jules Agent Execution Context]")
+                .substringBefore("\n\n[언어 설정:")
+                .substringBefore("\n\n[Language Setting:")
+                .trim()
         }
 
         /**

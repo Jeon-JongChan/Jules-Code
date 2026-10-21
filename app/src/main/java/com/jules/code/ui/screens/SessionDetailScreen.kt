@@ -11,10 +11,12 @@ import android.util.Base64
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -410,7 +412,15 @@ fun SessionDetailScreen(
             }
 
             // 탭별 본문 컨텐츠
+            val timelineListState = rememberLazyListState()
+            LaunchedEffect(activities.size, activeTab) {
+                if (activeTab == 0 && activities.isNotEmpty()) {
+                    timelineListState.animateScrollToItem(activities.lastIndex)
+                }
+            }
+
             LazyColumn(
+                state = timelineListState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -466,6 +476,7 @@ fun SessionDetailScreen(
                             items(allChangeSets) { cs ->
                                 ChangeSetDiffCard(
                                     changeSet = cs,
+                                    initiallyExpanded = true,
                                     onCopyPatch = { patchText ->
                                         copyToClipboard(context, "Jules Git Patch", patchText)
                                         viewModel.showMessage("Git patch copied.")
@@ -615,7 +626,7 @@ fun ActivityTimelineCard(
 
             activity.artifacts.forEach { art ->
                 art.bashOutput?.let { BashOutputCard(it) }
-                art.changeSet?.let { ChangeSetDiffCard(it, onCopyPatch) }
+                art.changeSet?.let { ChangeSetDiffCard(changeSet = it, initiallyExpanded = false, onCopyPatch = onCopyPatch) }
                 art.media?.let { MediaArtifactCard(it) }
             }
         }
@@ -734,11 +745,63 @@ fun PlanDetailCard(
 }
 
 /**
- * GitHub / Codex 스타일로 `+N` / `-M` 라인 카운트 배지와 줄 단위 컬러 하이라이팅을 제공하는 Unified Diff 뷰어입니다.
+ * Unified Diff 문자열에서 변경된 파일명과 파일별 `+추가 / -삭제` 줄 수 요약을 추출합니다.
+ */
+data class DiffFileSummary(
+    val filePath: String,
+    val shortName: String,
+    val added: Int,
+    val removed: Int
+)
+
+fun parseDiffFileSummaries(unidiffPatch: String): List<DiffFileSummary> {
+    if (unidiffPatch.isBlank()) return emptyList()
+    val results = mutableListOf<DiffFileSummary>()
+    var currentFile = ""
+    var addCount = 0
+    var remCount = 0
+
+    fun flushCurrent() {
+        if (currentFile.isNotBlank() || addCount > 0 || remCount > 0) {
+            val path = currentFile.ifBlank { "changed_file" }
+            results.add(
+                DiffFileSummary(
+                    filePath = path,
+                    shortName = path.substringAfterLast("/"),
+                    added = addCount,
+                    removed = remCount
+                )
+            )
+        }
+    }
+
+    unidiffPatch.lineSequence().forEach { line ->
+        when {
+            line.startsWith("diff --git ") -> {
+                flushCurrent()
+                currentFile = line.substringAfter(" b/", line.substringAfterLast(" ")).trim()
+                addCount = 0
+                remCount = 0
+            }
+            line.startsWith("+++ b/") -> {
+                currentFile = line.removePrefix("+++ b/").trim()
+            }
+            line.startsWith("+") && !line.startsWith("+++") -> addCount++
+            line.startsWith("-") && !line.startsWith("---") -> remCount++
+        }
+    }
+    flushCurrent()
+    return results
+}
+
+/**
+ * GitHub / Codex 스타일로 파일명과 `+N` / `-M` 바뀐 줄 수 요약을 보여주고,
+ * 타임라인에서는 기본 접힘(`initiallyExpanded = false`) 상태로 표시하다가 클릭 시 전체 Diff가 펼쳐지는 컴포넌트입니다.
  */
 @Composable
 fun ChangeSetDiffCard(
     changeSet: ChangeSetArtifact,
+    initiallyExpanded: Boolean = false,
     onCopyPatch: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -747,21 +810,26 @@ fun ChangeSetDiffCard(
         ?: changeSet.commitMessage
     val baseCommit = changeSet.gitPatch?.baseCommitId?.ifBlank { changeSet.baseCommit } ?: changeSet.baseCommit
 
-    val (addedCount, removedCount) = remember(patch) {
-        var add = 0
-        var rem = 0
-        patch.lineSequence().forEach { l ->
-            if (l.startsWith("+") && !l.startsWith("+++")) add++
-            else if (l.startsWith("-") && !l.startsWith("---")) rem++
+    var isExpanded by remember(patch, initiallyExpanded) { mutableStateOf(initiallyExpanded) }
+    val fileSummaries = remember(patch) { parseDiffFileSummaries(patch) }
+    val totalAdded = remember(fileSummaries) { fileSummaries.sumOf { it.added } }
+    val totalRemoved = remember(fileSummaries) { fileSummaries.sumOf { it.removed } }
+    val primaryHeader = remember(fileSummaries, commitMsg) {
+        when {
+            fileSummaries.size == 1 -> fileSummaries.first().filePath
+            fileSummaries.size > 1 -> "${fileSummaries.first().shortName} 외 ${fileSummaries.size - 1}개 파일"
+            commitMsg.isNotBlank() -> commitMsg
+            else -> "코드 변경 패치 (Git Diff)"
         }
-        add to rem
     }
 
     Surface(
         color = Color(0xFF0B0E14),
         shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, JulesBorder),
-        modifier = Modifier.fillMaxWidth()
+        border = BorderStroke(1.dp, if (isExpanded) JulesBrandPurple.copy(alpha = 0.6f) else JulesBorder),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = patch.isNotBlank()) { isExpanded = !isExpanded }
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -772,46 +840,67 @@ fun ChangeSetDiffCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = commitMsg.ifBlank { "코드 변경 패치 (Git Diff)" },
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = JulesPrimary
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = JulesSecondary,
+                        modifier = Modifier.size(18.dp)
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        if (baseCommit.isNotBlank()) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = primaryHeader,
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = JulesPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Text(
-                                text = "base: ${baseCommit.take(10)}",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                color = JulesTextMuted
-                            )
-                        }
-                        if (addedCount > 0 || removedCount > 0) {
-                            Text(
-                                text = "+$addedCount",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF56D364)
-                            )
-                            Text(
-                                text = "-$removedCount",
+                                text = "+$totalAdded",
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF85149)
+                                color = Color(0xFF56D364),
+                                maxLines = 1,
+                                softWrap = false
                             )
+                            Text(
+                                text = "-$totalRemoved",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF85149),
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                            if (baseCommit.isNotBlank()) {
+                                Text(
+                                    text = "• ${baseCommit.take(7)}",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                    color = JulesTextMuted,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
                 }
                 if (patch.isNotBlank()) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
                         IconButton(
                             onClick = {
                                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
@@ -821,28 +910,82 @@ fun ChangeSetDiffCard(
                                 }
                                 context.startActivity(Intent.createChooser(sendIntent, "Git Patch (.patch) 내보내기 / 공유"))
                             },
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(30.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = ".patch 내보내기/공유",
                                 tint = JulesSecondary,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(15.dp)
                             )
                         }
-                        IconButton(onClick = { onCopyPatch(patch) }, modifier = Modifier.size(32.dp)) {
+                        IconButton(onClick = { onCopyPatch(patch) }, modifier = Modifier.size(30.dp)) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
                                 contentDescription = "패치 복사",
                                 tint = JulesTextMuted,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(15.dp)
                             )
                         }
                     }
                 }
             }
 
-            if (patch.isNotBlank()) {
+            // 여러 파일이 변경된 경우 접힌 상태에서도 파일별 +N / -M 요약 칩을 간결하게 표시
+            if (fileSummaries.size > 1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    fileSummaries.forEach { fs ->
+                        Surface(
+                            color = JulesSurfaceElevated,
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, JulesBorder)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = fs.shortName,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    color = JulesTextPrimary,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                                Text(
+                                    text = "+${fs.added}",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF56D364),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                                Text(
+                                    text = "-${fs.removed}",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFF85149),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 클릭하여 펼쳤을 때만(`isExpanded == true`) 전체 Unified Diff 본문 렌더링
+            if (isExpanded && patch.isNotBlank()) {
+                val parsedLines = remember(patch) { patch.lines() }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -852,7 +995,7 @@ fun ChangeSetDiffCard(
                         .padding(vertical = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
-                    patch.lineSequence().forEachIndexed { idx, line ->
+                    parsedLines.forEachIndexed { idx, line ->
                         val bgColor = when {
                             line.startsWith("+") && !line.startsWith("+++") -> Color(0xFF102B1E)
                             line.startsWith("-") && !line.startsWith("---") -> Color(0xFF34161B)

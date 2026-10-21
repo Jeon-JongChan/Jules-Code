@@ -5,6 +5,7 @@ import com.jules.code.data.model.JulesSession
 import com.jules.code.data.remote.JulesApiClient
 import com.jules.code.ui.JulesLocaleManager
 import com.jules.code.ui.JulesViewModel
+import com.jules.code.ui.screens.parseDiffFileSummaries
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -159,6 +160,52 @@ class JulesApiParserTest {
         // 수동 언어 선택 시 기기 설정과 무관하게 지정된 언어로 고정됨
         assertEquals("en", JulesLocaleManager.resolveLocale("en", Locale.KOREA).language)
         assertEquals("ko", JulesLocaleManager.resolveLocale("ko", Locale.US).language)
+    }
+
+    @Test
+    fun parseDiffFileSummaries_extractsFileNamesAndAddedRemovedCounts() {
+        val sampleDiff = """
+            diff --git a/app/src/main/java/com/jules/code/MainActivity.kt b/app/src/main/java/com/jules/code/MainActivity.kt
+            index 1234567..89abcdef 100644
+            --- a/app/src/main/java/com/jules/code/MainActivity.kt
+            +++ b/app/src/main/java/com/jules/code/MainActivity.kt
+            @@ -12,4 +12,5 @@ class MainActivity {
+            -    val isDarkTheme = false
+            +    val isDarkTheme = true
+            +    val surfaceColor = Color(0xFF0A0E17)
+            diff --git a/app/src/main/java/com/jules/code/Theme.kt b/app/src/main/java/com/jules/code/Theme.kt
+            --- a/app/src/main/java/com/jules/code/Theme.kt
+            +++ b/app/src/main/java/com/jules/code/Theme.kt
+            @@ -1,3 +1,4 @@
+            +val PrimaryIndigo = Color(0xFF6366F1)
+        """.trimIndent()
+
+        val summaries = parseDiffFileSummaries(sampleDiff)
+        assertEquals(2, summaries.size)
+        assertEquals("MainActivity.kt", summaries[0].shortName)
+        assertEquals(2, summaries[0].added)
+        assertEquals(1, summaries[0].removed)
+        assertEquals("Theme.kt", summaries[1].shortName)
+        assertEquals(1, summaries[1].added)
+        assertEquals(0, summaries[1].removed)
+    }
+
+    @Test
+    fun stripInternalDirectives_cleansLanguageAndExecutionBlocksFromTimeline() {
+        val rawKo = "다크모드 버튼 수정해줘\n\n[언어 설정: 모든 답변, 진행 상황 요약, 에이전트 메시지 및 PR 설명은 반드시 한국어(Korean)로 작성해 주세요.]"
+        assertEquals("다크모드 버튼 수정해줘", JulesViewModel.stripInternalDirectives(rawKo))
+
+        val rawEnriched = JulesViewModel.buildEnrichedPrompt(
+            basePrompt = "Refactor auth service",
+            modelId = "GEMINI_3_6_FLASH",
+            enableCritic = false,
+            enableCiFixer = false,
+            setupScript = "",
+            envVars = "",
+            repoMemory = "",
+            responseLanguage = "en"
+        )
+        assertEquals("Refactor auth service", JulesViewModel.stripInternalDirectives(rawEnriched))
     }
 }
 

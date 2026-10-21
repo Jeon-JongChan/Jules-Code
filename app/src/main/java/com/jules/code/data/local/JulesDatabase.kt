@@ -75,6 +75,16 @@ data class AppPreferenceEntity(
 )
 
 /**
+ * 세션별 활동 타임라인(대화, 실행 계획, 코드 Diff, 터미널 로그)을 즉시(0ms) 렌더링하기 위한 로컬 캐시 엔티티입니다.
+ */
+@Entity(tableName = "cached_session_activities")
+data class CachedSessionActivitiesEntity(
+    @PrimaryKey val sessionId: String,
+    val activitiesJson: String,
+    val updatedAt: Long = System.currentTimeMillis()
+)
+
+/**
  * Jules 로컬 데이터를 관리하는 통합 Room DAO 인터페이스입니다.
  */
 @Dao
@@ -161,6 +171,16 @@ interface JulesDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setPreference(pref: AppPreferenceEntity)
+
+    // --- Cached Session Activities (0ms Instant Timeline) ---
+    @Query("SELECT * FROM cached_session_activities WHERE sessionId = :sessionId LIMIT 1")
+    suspend fun getCachedActivities(sessionId: String): CachedSessionActivitiesEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCachedActivities(entity: CachedSessionActivitiesEntity)
+
+    @Query("DELETE FROM cached_session_activities WHERE sessionId = :sessionId")
+    suspend fun deleteCachedActivities(sessionId: String)
 }
 
 /**
@@ -172,9 +192,10 @@ interface JulesDao {
         CachedSessionEntity::class,
         CachedSourceEntity::class,
         ScheduledTemplateEntity::class,
-        AppPreferenceEntity::class
+        AppPreferenceEntity::class,
+        CachedSessionActivitiesEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class JulesDatabase : RoomDatabase() {
