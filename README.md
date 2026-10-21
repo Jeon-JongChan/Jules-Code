@@ -137,10 +137,12 @@ flowchart TD
 ```text
 Jules Code App/
 ├── .build/                             # 격리형 포터블 빌드 킷 (JDK 21, Android SDK, Gradle 캐시)
-│   └── kotlin.ps1                      # 포터블 개발 환경 통합 제어 PowerShell 스크립트
-├── .docs/                              # 프로젝트 아키텍처 보고서 및 개발 매뉴얼
-│   ├── 개발-및-빌드-방법.md             # 상세 개발 및 빌드 환경 가이드
-│   └── 2026-10-21-jules-android-app-implementation.md # 기능 구현 완료 보고서
+│   ├── kotlin.ps1                      # 포터블 개발 환경 통합 제어 PowerShell 스크립트
+│   └── test/                           # 테스트 및 자동화 검증 도구 모음
+│       ├── run_tests.ps1               # 단위/계측 테스트 통합 실행 스크립트
+│       ├── capture_and_ocr.py          # 에뮬레이터 화면 캡처 및 OCR 파이프라인
+│       ├── capture_hierarchy.py        # UI 컴포넌트 계층 덤프 도구
+│       └── README.md                   # 테스트 스크립트 가이드
 ├── assets/
 │   └── screenshots/                    # 에뮬레이터에서 직접 캡처한 최신 UI 실기 스크린샷 4종
 │       ├── 01_onboarding.png           # 온보딩 및 API 키 등록 화면
@@ -148,27 +150,32 @@ Jules Code App/
 │       ├── 03_sessions_list.png        # 세션 목록 및 필터링 화면
 │       └── 04_session_chat.png          # 세션 실시간 채팅 & 대화 화면
 ├── app/
-│   ├── build.gradle.kts                # 의존성, SDK 버전(API 35), 서명 구성 설정
+│   ├── build.gradle.kts                # 의존성, SDK 버전(API 35), Room KSP 설정
 │   └── src/
 │       ├── androidTest/                # 에뮬레이터/실기기 대상 E2E UI 계측 테스트
 │       │   └── java/com/jules/code/JulesInstrumentedTest.kt
-│       ├── test/                       # 로컬 JVM 기반 API 파서 및 비즈니스 로직 단위 테스트
-│       │   └── java/com/jules/code/JulesApiParserTest.kt
+│       ├── test/                       # 로컬 JVM 기반 단위 테스트
+│       │   └── java/com/jules/code/JulesApiParserTest.kt # API 파서, 시간순 정렬 및 외부 소스 단위 테스트
 │       └── main/
-│           ├── AndroidManifest.xml     # 앱 권한, 액티비티 진입점, 딥링크 인텐트 필터 설정
+│           ├── AndroidManifest.xml     # 앱 권한, 인텐트 필터, 브라우저 연동 패키지 가시성(queries)
 │           ├── java/com/jules/code/
 │           │   ├── MainActivity.kt     # 루트 액티비티, 딥링크 파싱 및 4탭 네비게이션 쉘
 │           │   ├── data/
 │           │   │   ├── local/          # Room DB 엔티티, DAO, 인스턴스 (JulesDatabase.kt)
-│           │   │   ├── model/          # API 통신용 직렬화 데이터 모델 (JulesModels.kt)
+│           │   │   ├── model/          # 직렬화 모델 및 소스/타임스탬프 파서 (JulesModels.kt)
 │           │   │   └── remote/         # REST API 통신 엔진 (JulesApiClient.kt)
 │           │   └── ui/
-│           │       ├── JulesViewModel.kt # 전역 비즈니스 로직, 상태 Flow 및 쿼터 계산기
-│           │       ├── screens/        # 대시보드, 세션 목록, 세션 대화(채팅), 저장소, 설정
-│           │       └── theme/          # Jules 고유 보라빛 옵시디언 테마 및 벡터 엠블럼
-│           └── res/                    # Adaptive Vector App Icon, 문자열 리소스
-├── build.gradle.kts
-├── settings.gradle.kts
+│           │       ├── JulesViewModel.kt # 전역 상태 Flow, 비즈니스 로직, 쿼터 계산기, 외부 소스 관리
+│           │       ├── JulesBrowserUtils.kt # 기본 브라우저 실행 및 GitHub 연동 유틸리티
+│           │       ├── JulesLocalization.kt # 앱 다국어(한국어/영어/시스템) 로케일 매니저
+│           │       ├── screens/        # 화면 컴포저블 모음
+│           │       │   ├── DashboardAndOnboardingScreens.kt # 대시보드 컴포저 독 및 온보딩
+│           │       │   ├── SessionDetailScreen.kt           # 실시간 채팅 피드, 계획 승인, 이미지 줌, 코드 Diff
+│           │       │   └── SessionsSourcesSettingsScreens.kt# 세션 목록, 외부 저장소 관리, 설정
+│           │       └── theme/          # Jules 고유 보라빛 옵시디언 테마 및 벡터 엠블럼 (JulesTheme.kt)
+│           └── res/                    # Adaptive Vector App Icon, 다국어 문자열 리소스
+├── build.gradle.kts                    # 최상위 루트 Gradle 빌드 스크립트
+├── settings.gradle.kts                 # 모듈 및 플러그인 리포지토리 구성
 └── README.md                           # 오픈소스 공식 프로젝트 안내 문서
 ```
 

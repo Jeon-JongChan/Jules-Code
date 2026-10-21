@@ -13,9 +13,10 @@ android {
     defaultConfig {
         applicationId = "com.jules.code"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        // ponytail: Android 14/15 기기에서 사이드로딩 시 targetSdk 35 제한 및 Play Protect 경고를 피하기 위해 targetSdk 34 설정 (compileSdk 35 유지)
+        targetSdk = 34
+        versionCode = 2
+        versionName = "1.1.0"
         base.archivesName.set("Jules Code")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -26,26 +27,58 @@ android {
 
     signingConfigs {
         create("release") {
-            val ksFile = rootProject.file(
-                System.getenv("JULES_KEYSTORE_PATH") ?: ".build/kotlin/jules-release-key.jks"
-            )
+            val ksPath = System.getenv("JULES_KEYSTORE_PATH") ?: ".build/jules-release-key.jks"
+            val ksFile = rootProject.file(ksPath)
+            val ksPass = System.getenv("JULES_KEYSTORE_PASSWORD") ?: "julesrelease123"
+            val kAlias = System.getenv("JULES_KEY_ALIAS") ?: "jules"
+            val kPass = System.getenv("JULES_KEY_PASSWORD") ?: "julesrelease123"
+
+            if (!ksFile.exists()) {
+                ksFile.parentFile?.mkdirs()
+                val javaHome = System.getProperty("java.home")
+                val keytoolBin = File(javaHome, "bin/keytool.exe").takeIf { it.exists() }
+                    ?: File(javaHome, "bin/keytool")
+                val proc = ProcessBuilder(
+                    keytoolBin.absolutePath,
+                    "-genkeypair", "-v",
+                    "-keystore", ksFile.absolutePath,
+                    "-alias", kAlias,
+                    "-keyalg", "RSA",
+                    "-keysize", "2048",
+                    "-validity", "10000",
+                    "-storepass", ksPass,
+                    "-keypass", kPass,
+                    "-dname", "CN=Jules Code, OU=Mobile, O=JulesCode, L=Seoul, ST=Seoul, C=KR"
+                ).redirectErrorStream(true).start()
+                proc.waitFor()
+            }
+
             if (ksFile.exists()) {
                 storeFile = ksFile
-                storePassword = System.getenv("JULES_KEYSTORE_PASSWORD") ?: "julesrelease123"
-                keyAlias = System.getenv("JULES_KEY_ALIAS") ?: "jules"
-                keyPassword = System.getenv("JULES_KEY_PASSWORD") ?: "julesrelease123"
+                storePassword = ksPass
+                keyAlias = kAlias
+                keyPassword = kPass
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
             }
         }
     }
 
     buildTypes {
+        val relSigning = signingConfigs.findByName("release")
+        debug {
+            // 디버그/릴리즈 APK 간 교차 덮어쓰기 시 INSTALL_FAILED_UPDATE_INCOMPATIBLE 방지 및 CN=Android Debug 차단 회피
+            if (relSigning?.storeFile?.exists() == true) {
+                signingConfig = relSigning
+            }
+        }
         release {
             isMinifyEnabled = false
-            val relSigning = signingConfigs.findByName("release")
             signingConfig = if (relSigning?.storeFile?.exists() == true) {
                 relSigning
             } else {
-                // ponytail: 키스토어 미생성 시에도 즉시 설치 가능한 서명된 APK가 나오도록 debug 서명 폴백 적용
                 signingConfigs.getByName("debug")
             }
             proguardFiles(
@@ -69,6 +102,9 @@ android {
     }
 
     packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
@@ -119,4 +155,3 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
-

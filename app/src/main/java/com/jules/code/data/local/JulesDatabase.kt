@@ -2,6 +2,8 @@ package com.jules.code.data.local
 
 import android.content.Context
 import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -37,6 +39,7 @@ data class CachedSessionEntity(
 
 /**
  * 오프라인 조회 및 빠른 선택을 위해 캐시하는 GitHub 소스(저장소) Room 엔티티입니다.
+ * [isCustom]이 true인 경우 사용자가 직접 외부 계정/조직의 저장소를 등록한 항목으로, 원격 동기화 시에도 보존됩니다.
  */
 @Entity(tableName = "cached_sources")
 data class CachedSourceEntity(
@@ -46,7 +49,8 @@ data class CachedSourceEntity(
     val repo: String,
     val isPrivate: Boolean,
     val defaultBranch: String,
-    val branchesCsv: String
+    val branchesCsv: String,
+    val isCustom: Boolean = false
 )
 
 /**
@@ -146,11 +150,26 @@ interface JulesDao {
     suspend fun setSessionPinned(sessionId: String, pinned: Boolean)
 
     // --- Cached Sources ---
-    @Query("SELECT * FROM cached_sources ORDER BY owner ASC, repo ASC")
+    @Query("SELECT * FROM cached_sources ORDER BY isCustom DESC, owner ASC, repo ASC")
     fun observeSources(): Flow<List<CachedSourceEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSources(items: List<CachedSourceEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCustomSource(entity: CachedSourceEntity)
+
+    @Query("DELETE FROM cached_sources WHERE isCustom = 0")
+    suspend fun clearRemoteSources()
+
+    @Query("DELETE FROM cached_sources WHERE name = :name AND isCustom = 1")
+    suspend fun deleteCustomSource(name: String)
+
+    @Transaction
+    suspend fun syncRemoteSources(remoteItems: List<CachedSourceEntity>) {
+        clearRemoteSources()
+        upsertSources(remoteItems)
+    }
 
     // --- Scheduled Tasks & Prompt Templates ---
     @Query("SELECT * FROM scheduled_templates ORDER BY id DESC")
@@ -195,7 +214,7 @@ interface JulesDao {
         AppPreferenceEntity::class,
         CachedSessionActivitiesEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class JulesDatabase : RoomDatabase() {
@@ -204,6 +223,31 @@ abstract class JulesDatabase : RoomDatabase() {
     companion object {
         @Volatile
         private var INSTANCE: JulesDatabase? = null
+
+        /** 버전 1 -> 2 마이그레이션: 세션 액티비티 0ms 즉시 렌더링용 캐시 테이블 추가 */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `cached_session_activities` (
+                        `sessionId` TEXT NOT NULL,
+                        `activitiesJson` TEXT NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`sessionId`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /** 버전 2 -> 3 마이그레이션: 외부/타 계정 커스텀 GitHub 저장소 보존용 `isCustom` 컬럼 추가 */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `cached_sources` ADD COLUMN `isCustom` INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
 
         /**
          * 싱글톤 Room 데이터베이스 인스턴스를 반환합니다.
@@ -214,7 +258,11 @@ abstract class JulesDatabase : RoomDatabase() {
                     context.applicationContext,
                     JulesDatabase::class.java,
                     "jules_code_app.db"
-                ).fallbackToDestructiveMigration().build().also { INSTANCE = it }
+                )
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .fallbackToDestructiveMigration()
+                    .build()
+                    .also { INSTANCE = it }
             }
         }
     }

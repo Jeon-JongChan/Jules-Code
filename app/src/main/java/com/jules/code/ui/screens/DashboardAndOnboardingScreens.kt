@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import com.jules.code.ui.JulesBrowserUtils
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -204,8 +205,7 @@ fun ApiKeyOnboardingScreen(viewModel: JulesViewModel) {
 
                 TextButton(
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://jules.google.com/settings"))
-                        context.startActivity(intent)
+                        JulesBrowserUtils.openUrlInDefaultBrowser(context, "https://jules.google.com/settings")
                     },
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
@@ -442,11 +442,25 @@ fun DashboardScreen(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.FolderSpecial,
+                                        imageVector = if (selectedSource?.isCustom == true) Icons.Default.FolderShared else Icons.Default.FolderSpecial,
                                         contentDescription = null,
-                                        tint = JulesSecondary,
+                                        tint = if (selectedSource?.isCustom == true) JulesPrimary else JulesSecondary,
                                         modifier = Modifier.size(15.dp)
                                     )
+                                    if (selectedSource?.isCustom == true) {
+                                        Surface(
+                                            color = JulesBrandPurple.copy(alpha = 0.2f),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text(
+                                                text = "외부",
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 10.sp,
+                                                color = JulesPrimary,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            )
+                                        }
+                                    }
                                     Text(
                                         text = selectedSource?.let { "${it.owner}/${it.repo}" } ?: "Repoless (Cloud VM)",
                                         fontFamily = FontFamily.Monospace,
@@ -476,7 +490,34 @@ fun DashboardScreen(
                                 )
                                 sources.forEach { src ->
                                     DropdownMenuItem(
-                                        text = { Text("${src.owner}/${src.repo}", fontFamily = FontFamily.Monospace, fontSize = 13.sp) },
+                                        text = {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                if (src.isCustom) {
+                                                    Surface(
+                                                        color = JulesBrandPurple.copy(alpha = 0.18f),
+                                                        shape = RoundedCornerShape(4.dp),
+                                                        border = BorderStroke(1.dp, JulesBrandPurple.copy(alpha = 0.4f))
+                                                    ) {
+                                                        Text(
+                                                            text = "외부",
+                                                            fontFamily = FontFamily.Monospace,
+                                                            fontSize = 10.sp,
+                                                            color = JulesPrimary,
+                                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                        )
+                                                    }
+                                                }
+                                                Text(
+                                                    text = "${src.owner}/${src.repo}",
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = if (src.isCustom) FontWeight.Bold else FontWeight.Normal
+                                                )
+                                            }
+                                        },
                                         onClick = {
                                             selectedSourceName = src.name
                                             selectedBranch = src.defaultBranch
@@ -1216,6 +1257,7 @@ fun SessionSummaryCard(
     onPinToggle: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     Surface(
         color = JulesSurface,
         shape = RoundedCornerShape(16.dp),
@@ -1296,7 +1338,14 @@ fun SessionSummaryCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val isGithubRepo = session.repoDisplay.isNotBlank() && !session.repoDisplay.contains("Repoless", ignoreCase = true)
                 Surface(
+                    onClick = {
+                        if (isGithubRepo) {
+                            JulesBrowserUtils.openGitHubRepo(context, session.repoDisplay)
+                        }
+                    },
+                    enabled = isGithubRepo,
                     color = JulesSurfaceElevated,
                     shape = RoundedCornerShape(6.dp),
                     border = BorderStroke(1.dp, JulesBorder)
@@ -1308,15 +1357,15 @@ fun SessionSummaryCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Code,
-                            contentDescription = null,
+                            contentDescription = if (isGithubRepo) "GitHub 저장소 열기" else null,
                             modifier = Modifier.size(12.dp),
-                            tint = JulesSecondary
+                            tint = if (isGithubRepo) JulesPrimary else JulesSecondary
                         )
                         Text(
                             text = session.repoDisplay,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
-                            color = JulesSecondary,
+                            color = if (isGithubRepo) JulesPrimary else JulesSecondary,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -1352,6 +1401,9 @@ fun SessionSummaryCard(
 
                 if (session.prUrl.isNotBlank()) {
                     Surface(
+                        onClick = {
+                            JulesBrowserUtils.openUrlInDefaultBrowser(context, session.prUrl)
+                        },
                         color = JulesSuccess.copy(alpha = 0.16f),
                         shape = RoundedCornerShape(6.dp),
                         border = BorderStroke(1.dp, JulesSuccess.copy(alpha = 0.4f))
@@ -1363,7 +1415,7 @@ fun SessionSummaryCard(
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.MergeType,
-                                contentDescription = null,
+                                contentDescription = "PR 열기",
                                 tint = JulesSuccess,
                                 modifier = Modifier.size(12.dp)
                             )
@@ -1375,6 +1427,12 @@ fun SessionSummaryCard(
                                 color = JulesSuccess,
                                 maxLines = 1,
                                 softWrap = false
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = null,
+                                tint = JulesSuccess,
+                                modifier = Modifier.size(10.dp)
                             )
                         }
                     }
@@ -1389,6 +1447,10 @@ fun SessionSummaryCard(
  */
 @Composable
 fun StateBadge(state: String) {
+    val isAlive = when (state.uppercase()) {
+        "IN_PROGRESS", "PLANNING", "QUEUED", "AWAITING_PLAN_APPROVAL", "AWAITING_USER_FEEDBACK" -> true
+        else -> false
+    }
     val (color, label) = when (state.uppercase()) {
         "COMPLETED" -> JulesSuccess to stringResource(R.string.state_completed)
         "AWAITING_PLAN_APPROVAL" -> JulesWarning to stringResource(R.string.state_awaiting_plan)
@@ -1417,7 +1479,7 @@ fun StateBadge(state: String) {
                     .background(color)
             )
             Text(
-                text = label,
+                text = if (isAlive) "활성 • $label" else label,
                 color = color,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold

@@ -103,21 +103,18 @@ fun JulesMobileApp(
             return@ProvideJulesLocalization
         }
 
-        // 세션 상세 화면이 열려 있으면 뒤로가기 핸들링과 함께 전체 화면으로 렌더링
+        // 세션 상세 화면이 열려 있으면 뒤로가기 핸들링과 함께 이중 Scaffold 인셋 중첩 없이 렌더링
         if (openedSessionId != null) {
-            BackHandler {
+            val handleCloseSession = {
+                viewModel.closeSession()
                 openedSessionId = null
             }
-            Scaffold(
-                snackbarHost = { SnackbarHost(snackbarHostState) }
-            ) { pad ->
-                Box(modifier = Modifier.padding(pad)) {
-                    SessionDetailScreen(
-                        viewModel = viewModel,
-                        onBack = { openedSessionId = null }
-                    )
-                }
-            }
+            BackHandler(onBack = handleCloseSession)
+            SessionDetailScreen(
+                viewModel = viewModel,
+                onBack = handleCloseSession,
+                snackbarHostState = snackbarHostState
+            )
             return@ProvideJulesLocalization
         }
 

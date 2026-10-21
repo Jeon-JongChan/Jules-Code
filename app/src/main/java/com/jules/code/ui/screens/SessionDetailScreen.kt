@@ -32,6 +32,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.jules.code.ui.JulesBrowserUtils
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -54,12 +62,14 @@ import java.util.Locale
 @Composable
 fun SessionDetailScreen(
     viewModel: JulesViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    snackbarHostState: SnackbarHostState? = null
 ) {
     val context = LocalContext.current
     val session by viewModel.selectedSessionDetail.collectAsState()
     val activities by viewModel.activities.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isAwaitingResponse by viewModel.isAwaitingResponse.collectAsState()
 
     var activeTab by remember { mutableIntStateOf(0) } // 0: 타임라인, 1: 계획(Plan), 2: 코드 Diff, 3: 터미널(Bash)
     var messageInput by remember { mutableStateOf("") }
@@ -92,6 +102,11 @@ fun SessionDetailScreen(
     }
 
     Scaffold(
+        snackbarHost = {
+            if (snackbarHostState != null) {
+                SnackbarHost(snackbarHostState)
+            }
+        },
         topBar = {
             Column {
                 TopAppBar(
@@ -104,20 +119,39 @@ fun SessionDetailScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            val curRepoDisp = session?.repoDisplay.orEmpty()
+                            val isGithubRepo = curRepoDisp.isNotBlank() && !curRepoDisp.contains("Repoless", ignoreCase = true)
                             Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Text(
-                                    text = "${session?.repoDisplay ?: ""}:${session?.branchDisplay ?: "main"}",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
-                                    color = JulesSecondary,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .clickable(enabled = isGithubRepo) {
+                                            JulesBrowserUtils.openGitHubRepo(context, curRepoDisp)
+                                        },
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    if (isGithubRepo) {
+                                        Icon(
+                                            imageVector = Icons.Default.Code,
+                                            contentDescription = "GitHub 저장소 열기",
+                                            tint = JulesPrimary,
+                                            modifier = Modifier.size(11.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = "${session?.repoDisplay ?: ""}:${session?.branchDisplay ?: "main"}",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        color = if (isGithubRepo) JulesPrimary else JulesSecondary,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                                 Text("•", fontSize = 11.sp, color = JulesTextMuted, maxLines = 1, softWrap = false)
                                 val stateText = when ((session?.state ?: "").uppercase()) {
                                     "COMPLETED" -> stringResource(R.string.state_completed)
@@ -130,14 +164,32 @@ fun SessionDetailScreen(
                                     "PAUSED" -> stringResource(R.string.state_paused)
                                     else -> JulesViewModel.translateState(session?.state ?: "")
                                 }
-                                Text(
-                                    text = stateText,
-                                    fontSize = 11.sp,
-                                    color = JulesPrimary,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
+                                val isAlive = session?.isAlive == true
+                                Surface(
+                                    color = if (isAlive) JulesSuccess.copy(alpha = 0.16f) else JulesSurfaceElevated,
+                                    shape = RoundedCornerShape(4.dp),
+                                    border = BorderStroke(1.dp, if (isAlive) JulesSuccess.copy(alpha = 0.45f) else JulesBorder)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Surface(
+                                            color = if (isAlive) JulesSuccess else JulesTextMuted,
+                                            shape = CircleShape,
+                                            modifier = Modifier.size(5.dp)
+                                        ) {}
+                                        Text(
+                                            text = if (isAlive) "활성 • $stateText" else "종료 • $stateText",
+                                            fontSize = 10.sp,
+                                            color = if (isAlive) JulesSuccess else JulesTextMuted,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
                             }
                         }
                     },
@@ -147,18 +199,35 @@ fun SessionDetailScreen(
                         }
                     },
                     actions = {
-                        // Jules 웹 콘솔 열기 / Repoless 세션을 GitHub 저장소로 Publish하는 바로가기
+                        // GitHub 저장소 열기 버튼 (저장소 연동된 세션인 경우 기본 브라우저로 실행)
+                        val repoDisp = session?.repoDisplay.orEmpty()
+                        val hasGithubRepo = repoDisp.isNotBlank() && !repoDisp.contains("Repoless", ignoreCase = true)
+                        if (hasGithubRepo) {
+                            IconButton(
+                                onClick = {
+                                    JulesBrowserUtils.openGitHubRepo(context, repoDisp)
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Code,
+                                    contentDescription = "GitHub 저장소 열기",
+                                    tint = JulesPrimary
+                                )
+                            }
+                        }
+
+                        // Jules 웹 콘솔 열기 / Repoless 세션을 GitHub 저장소로 Publish하는 바로가기 (기본 브라우저로 실행)
                         IconButton(
                             onClick = {
                                 val webUrl = session?.url?.ifBlank { null }
                                     ?: session?.sessionId?.let { "https://jules.google.com/session/$it" }
                                     ?: "https://jules.google.com"
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(webUrl)))
+                                JulesBrowserUtils.openUrlInDefaultBrowser(context, webUrl)
                             }
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = null,
+                                contentDescription = "웹에서 열기",
                                 tint = JulesSecondary
                             )
                         }
@@ -233,14 +302,22 @@ fun SessionDetailScreen(
                             viewModel.sendMessage(sId, messageInput)
                             messageInput = ""
                         },
-                        enabled = messageInput.isNotBlank() && session != null,
+                        enabled = messageInput.isNotBlank() && session != null && !isAwaitingResponse,
                         shape = RoundedCornerShape(12.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = JulesBrandPurple,
                             contentColor = Color.White
                         )
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                        if (isAwaitingResponse) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
                     }
                 }
             }
@@ -334,7 +411,7 @@ fun SessionDetailScreen(
                                 }
                                 OutlinedButton(
                                     onClick = {
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(pr.url)))
+                                        JulesBrowserUtils.openUrlInDefaultBrowser(context, pr.url)
                                     },
                                     shape = RoundedCornerShape(10.dp),
                                     border = BorderStroke(1.dp, JulesSuccess.copy(alpha = 0.6f))
@@ -372,7 +449,7 @@ fun SessionDetailScreen(
                             TextButton(
                                 onClick = {
                                     val webUrl = curSession.url.ifBlank { "https://jules.google.com/session/${curSession.sessionId}" }
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(webUrl)))
+                                    JulesBrowserUtils.openUrlInDefaultBrowser(context, webUrl)
                                 }
                             ) {
                                 Text(stringResource(R.string.detail_publish_github_btn), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = JulesSecondary)
@@ -413,9 +490,12 @@ fun SessionDetailScreen(
 
             // 탭별 본문 컨텐츠
             val timelineListState = rememberLazyListState()
-            LaunchedEffect(activities.size, activeTab) {
-                if (activeTab == 0 && activities.isNotEmpty()) {
-                    timelineListState.animateScrollToItem(activities.lastIndex)
+            LaunchedEffect(activities.size, isAwaitingResponse, activeTab) {
+                if (activeTab == 0 && (activities.isNotEmpty() || isAwaitingResponse)) {
+                    val targetIndex = if (isAwaitingResponse) activities.size else activities.lastIndex
+                    if (targetIndex >= 0) {
+                        timelineListState.animateScrollToItem(targetIndex)
+                    }
                 }
             }
 
@@ -427,7 +507,7 @@ fun SessionDetailScreen(
             ) {
                 when (activeTab) {
                     0 -> {
-                        if (activities.isEmpty()) {
+                        if (activities.isEmpty() && !isAwaitingResponse) {
                             item {
                                 EmptyStateCard(
                                     title = stringResource(R.string.empty_timeline_title),
@@ -443,6 +523,11 @@ fun SessionDetailScreen(
                                         viewModel.showMessage("Git patch copied.")
                                     }
                                 )
+                            }
+                            if (isAwaitingResponse) {
+                                item(key = "agent_responding_loader") {
+                                    AgentRespondingCard()
+                                }
                             }
                         }
                     }
@@ -1113,10 +1198,208 @@ fun BashOutputCard(bash: BashOutputArtifact) {
 }
 
 /**
- * Base64 인코딩된 미디어 산출물(스크린샷 등)을 디코딩해 표시하는 카드입니다.
+ * 에이전트 응답 생성 및 작업 진행 대기 중일 때 표시되는 로딩 카드입니다.
+ */
+@Composable
+fun AgentRespondingCard() {
+    Surface(
+        color = JulesSurfaceElevated,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, JulesBrandPurple.copy(alpha = 0.5f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = JulesBrandPurple,
+                strokeWidth = 2.5.dp
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "Jules 에이전트가 응답을 생성하고 있습니다...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = JulesTextPrimary
+                )
+                Text(
+                    text = "작업 계획 수립 및 변경사항 검토 중",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = JulesTextMuted
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 이미지 산출물을 전체 화면으로 띄우고 핀치 줌, 패닝, 더블탭 리셋, 플로팅 줌 컨트롤을 제공하는 팝업 다이얼로그입니다.
+ */
+@Composable
+fun ImageZoomDialog(
+    bitmap: androidx.compose.ui.graphics.ImageBitmap,
+    title: String,
+    onDismiss: () -> Unit
+) {
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.94f))
+        ) {
+            // 상단 바 (제목, 줌 배율 배지, 닫기 버튼)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "핀치 또는 버튼으로 확대/축소, 더블탭 리셋",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                }
+
+                Surface(
+                    color = Color.White.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) {
+                    Text(
+                        text = "${(scale * 100).toInt()}%",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.background(Color.White.copy(alpha = 0.12f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "닫기",
+                        tint = Color.White
+                    )
+                }
+            }
+
+            // 이미지 표시 영역 (핀치 줌, 패닝, 더블탭 토글)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clipToBounds()
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                if (scale > 1.2f) {
+                                    scale = 1f
+                                    offset = androidx.compose.ui.geometry.Offset.Zero
+                                } else {
+                                    scale = 2.5f
+                                }
+                            }
+                        )
+                    }
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(0.8f, 5.0f)
+                            if (scale > 1f) {
+                                offset += pan
+                            } else {
+                                offset = androidx.compose.ui.geometry.Offset.Zero
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = "확대된 이미지 산출물",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            translationX = offset.x
+                            translationY = offset.y
+                        }
+                )
+            }
+
+            // 하단 플로팅 줌 컨트롤 바 (+, -, 1:1 리셋)
+            Surface(
+                color = JulesSurfaceElevated.copy(alpha = 0.9f),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, JulesBorder),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    IconButton(onClick = {
+                        scale = (scale - 0.5f).coerceAtLeast(1f)
+                        if (scale <= 1f) offset = androidx.compose.ui.geometry.Offset.Zero
+                    }) {
+                        Icon(Icons.Default.ZoomOut, contentDescription = "축소", tint = Color.White)
+                    }
+                    TextButton(onClick = {
+                        scale = 1f
+                        offset = androidx.compose.ui.geometry.Offset.Zero
+                    }) {
+                        Text("1:1 리셋", color = JulesPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    IconButton(onClick = {
+                        scale = (scale + 0.5f).coerceAtMost(5f)
+                    }) {
+                        Icon(Icons.Default.ZoomIn, contentDescription = "확대", tint = Color.White)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Base64 인코딩된 미디어 산출물(스크린샷 등)을 디코딩해 표시하고,
+ * 클릭 시 핀치 줌 및 확대 팝업 화면으로 연결하는 카드입니다.
  */
 @Composable
 fun MediaArtifactCard(media: MediaArtifact) {
+    var showZoomDialog by remember { mutableStateOf(false) }
     val bitmap = remember(media.data) {
         try {
             val bytes = Base64.decode(media.data, Base64.DEFAULT)
@@ -1125,6 +1408,15 @@ fun MediaArtifactCard(media: MediaArtifact) {
             null
         }
     }
+
+    if (showZoomDialog && bitmap != null) {
+        ImageZoomDialog(
+            bitmap = bitmap,
+            title = "미디어 산출물 (${media.mimeType})",
+            onDismiss = { showZoomDialog = false }
+        )
+    }
+
     Surface(
         color = JulesSurfaceElevated,
         shape = RoundedCornerShape(12.dp),
@@ -1135,21 +1427,55 @@ fun MediaArtifactCard(media: MediaArtifact) {
             modifier = Modifier.padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = "미디어 산출물 (${media.mimeType})",
-                fontFamily = FontFamily.Monospace,
-                style = MaterialTheme.typography.labelSmall,
-                color = JulesTextMuted
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "미디어 산출물 (${media.mimeType})",
+                    fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = JulesTextMuted
+                )
+                if (bitmap != null) {
+                    Row(
+                        modifier = Modifier
+                            .clickable { showZoomDialog = true }
+                            .padding(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ZoomIn,
+                            contentDescription = "확대보기",
+                            tint = JulesPrimary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = "클릭하여 확대",
+                            fontSize = 11.sp,
+                            color = JulesPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+
             if (bitmap != null) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = "Jules 생성 이미지",
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 260.dp)
                         .clip(RoundedCornerShape(8.dp))
-                )
+                        .clickable { showZoomDialog = true }
+                ) {
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = "Jules 생성 이미지 (클릭하여 확대)",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
     }

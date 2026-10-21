@@ -1,7 +1,12 @@
 import subprocess
 import time
+import os
+import sys
 
-adb = r'.build\kotlin\android-sdk\platform-tools\adb.exe'
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
+adb_candidate = os.path.join(PROJECT_ROOT, '.build', 'kotlin', 'android-sdk', 'platform-tools', 'adb.exe')
+adb = adb_candidate if os.path.exists(adb_candidate) else 'adb'
 
 def tap(x, y):
     subprocess.run([adb, 'shell', 'input', 'tap', str(x), str(y)])

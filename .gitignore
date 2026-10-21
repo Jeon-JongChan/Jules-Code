@@ -2,6 +2,7 @@
 .docs
 .build/kotlin/
 .gradle/
+.kotlin
 build/
 app/build/
 local.properties

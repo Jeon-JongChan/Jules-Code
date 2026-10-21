@@ -65,6 +65,57 @@ data class GitBranch(
 )
 
 /**
+ * 사용자 입력으로부터 GitHub 소유자(Owner)와 저장소 이름(Repo)을 정제하고 검증합니다.
+ * 'owner', 'repo' 개별 입력 필드뿐만 아니라 URL이나 복사된 슬래시 경로('owner/repo')도 유연하게 정제합니다.
+ *
+ * @param ownerInput 사용자가 입력한 소유자(사용자 ID 또는 조직명) 문자열
+ * @param repoInput 사용자가 입력한 저장소 이름 문자열
+ * @return 유효한 (Owner, Repo) 페어 또는 검증 실패 시 null
+ */
+fun parseGitHubRepoInput(ownerInput: String, repoInput: String): Pair<String, String>? {
+    val rawOwner = ownerInput.trim().removeSuffix("/")
+    val rawRepo = repoInput.trim().removeSuffix("/").removeSuffix(".git")
+
+    // Case 1: owner 필드에 https://github.com/owner/repo 형식 전체가 들어온 경우
+    if (rawOwner.contains("github.com/")) {
+        val path = rawOwner.substringAfter("github.com/").trim('/')
+        val parts = path.split("/").filter { it.isNotBlank() }
+        if (parts.size >= 2) {
+            val owner = parts[0].trim()
+            val repo = parts[1].removeSuffix(".git").trim()
+            return if (owner.isNotBlank() && repo.isNotBlank()) owner to repo else null
+        }
+    }
+
+    // Case 2: owner 필드에 "owner/repo" 슬래시가 포함된 경우
+    if (rawOwner.contains("/")) {
+        val parts = rawOwner.split("/").filter { it.isNotBlank() }
+        if (parts.size >= 2) {
+            val owner = parts[0].trim()
+            val repo = if (rawRepo.isNotBlank()) rawRepo else parts[1].removeSuffix(".git").trim()
+            return if (owner.isNotBlank() && repo.isNotBlank()) owner to repo else null
+        }
+    }
+
+    // Case 3: repo 필드에 "owner/repo" 또는 전체 URL이 들어온 경우
+    if (rawRepo.contains("github.com/")) {
+        val path = rawRepo.substringAfter("github.com/").trim('/')
+        val parts = path.split("/").filter { it.isNotBlank() }
+        if (parts.size >= 2) {
+            val owner = parts[0].trim()
+            val repo = parts[1].removeSuffix(".git").trim()
+            return if (owner.isNotBlank() && repo.isNotBlank()) owner to repo else null
+        }
+    }
+
+    // Case 4: 정석대로 분리된 개별 입력
+    val cleanOwner = rawOwner.trim().trim('/')
+    val cleanRepo = rawRepo.trim().trim('/').removeSuffix(".git")
+    if (cleanOwner.isBlank() || cleanRepo.isBlank()) return null
+    return cleanOwner to cleanRepo
+}
+
+/**
  * Jules 세션 목록 응답 모델입니다.
  */
 @Serializable
@@ -120,6 +171,53 @@ data class JulesSession(
         get() = sourceContext?.githubRepoContext?.startingBranch
             ?: sourceContext?.baseBranch
             ?: "main"
+
+    /**
+     * 해당 세션이 현재 실행 중이거나 피드백/계획 승인 대기 등 활성(Live) 상태인지 여부를 반환합니다.
+     */
+    val isAlive: Boolean
+        get() = when (state.uppercase()) {
+            "IN_PROGRESS", "PLANNING", "QUEUED", "AWAITING_PLAN_APPROVAL", "AWAITING_USER_FEEDBACK" -> true
+            else -> false
+        }
+}
+
+/**
+ * 활동(Activity)의 ISO 타임스탬프 또는 문자열을 에포크 밀리초(Epoch Millis)로 파싱합니다.
+ * 파싱 실패 또는 상대 시간("방금 전" 등)인 경우 현재 시간에 가깝게 안전 폴백합니다.
+ */
+fun parseActivityTimestamp(isoOrText: String): Long {
+    val trimmed = isoOrText.trim()
+    if (trimmed.isEmpty()) return 0L
+    try {
+        return java.time.Instant.parse(trimmed).toEpochMilli()
+    } catch (_: Exception) {}
+    try {
+        return java.time.OffsetDateTime.parse(trimmed).toInstant().toEpochMilli()
+    } catch (_: Exception) {}
+    try {
+        return java.time.LocalDateTime.parse(trimmed).toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
+    } catch (_: Exception) {}
+    try {
+        val num = trimmed.toLong()
+        return if (num < 10_000_000_000L) num * 1000L else num
+    } catch (_: Exception) {}
+    // "방금 전", "Just now" 등 상대 시간 문자열인 경우 최신(가장 뒤)으로 배치되도록 Long.MAX_VALUE - 1000L 반환
+    return Long.MAX_VALUE - 1000L
+}
+
+/**
+ * 액티비티 목록을 시간순(과거 -> 최신 오름차순)으로 안정적으로 정렬합니다.
+ * 타임스탬프가 동일한 경우 사용자 메시지("user")를 에이전트 응답보다 먼저 배치하고, 원래 입력 순서를 보존합니다.
+ */
+fun sortActivitiesChronologically(activities: List<JulesActivity>): List<JulesActivity> {
+    return activities.withIndex()
+        .sortedWith(
+            compareBy<IndexedValue<JulesActivity>> { parseActivityTimestamp(it.value.createTime) }
+                .thenBy { if (it.value.originator.equals("user", ignoreCase = true)) 0 else 1 }
+                .thenBy { it.index }
+        )
+        .map { it.value }
 }
 
 /**

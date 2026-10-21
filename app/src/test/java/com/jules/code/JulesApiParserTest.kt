@@ -1,6 +1,7 @@
 package com.jules.code
 
 import com.jules.code.data.local.CachedSessionEntity
+import com.jules.code.data.local.CachedSourceEntity
 import com.jules.code.data.model.JulesSession
 import com.jules.code.data.remote.JulesApiClient
 import com.jules.code.ui.JulesLocaleManager
@@ -9,6 +10,13 @@ import com.jules.code.ui.screens.parseDiffFileSummaries
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import com.jules.code.data.model.JulesActivity
+import com.jules.code.data.model.sortActivitiesChronologically
+import com.jules.code.data.model.parseActivityTimestamp
+import com.jules.code.data.model.parseGitHubRepoInput
 import org.junit.Test
 
 /**
@@ -206,6 +214,124 @@ class JulesApiParserTest {
             responseLanguage = "en"
         )
         assertEquals("Refactor auth service", JulesViewModel.stripInternalDirectives(rawEnriched))
+    }
+
+    @Test
+    fun sortActivitiesChronologically_ordersActivitiesByAscendingTime() {
+        val actOld = JulesActivity(id = "1", createTime = "2026-10-21T01:00:00Z")
+        val actMid = JulesActivity(id = "2", createTime = "2026-10-21T02:30:15.500Z")
+        val actNew = JulesActivity(id = "3", createTime = "2026-10-21T03:15:00Z")
+        val actRecent = JulesActivity(id = "4", createTime = "방금 전")
+
+        // 역순 및 뒤섞인 순서 목록
+        val scrambled = listOf(actNew, actOld, actRecent, actMid)
+        val sorted = sortActivitiesChronologically(scrambled)
+
+        assertEquals("1", sorted[0].id)
+        assertEquals("2", sorted[1].id)
+        assertEquals("3", sorted[2].id)
+        assertEquals("4", sorted[3].id)
+
+        // 동일 초(동일 타임스탬프)에 생성된 경우 사용자("user") 메시지가 에이전트("agent") 응답보다 먼저 배치되는지 검증
+        val sameTimeAgent = JulesActivity(id = "aaa-agent-uuid", originator = "agent", createTime = "2026-10-21T05:00:00Z")
+        val sameTimeUser = JulesActivity(id = "zzz-user-uuid", originator = "user", createTime = "2026-10-21T05:00:00Z")
+        val tieSorted = sortActivitiesChronologically(listOf(sameTimeAgent, sameTimeUser))
+        assertEquals("zzz-user-uuid", tieSorted[0].id)
+        assertEquals("aaa-agent-uuid", tieSorted[1].id)
+    }
+
+    @Test
+    fun julesSession_isAlive_reportsCorrectLiveness() {
+        assertTrue(JulesSession(state = "IN_PROGRESS").isAlive)
+        assertTrue(JulesSession(state = "PLANNING").isAlive)
+        assertTrue(JulesSession(state = "QUEUED").isAlive)
+        assertTrue(JulesSession(state = "AWAITING_PLAN_APPROVAL").isAlive)
+        assertTrue(JulesSession(state = "AWAITING_USER_FEEDBACK").isAlive)
+
+        assertFalse(JulesSession(state = "COMPLETED").isAlive)
+        assertFalse(JulesSession(state = "FAILED").isAlive)
+        assertFalse(JulesSession(state = "PAUSED").isAlive)
+        assertFalse(JulesSession(state = "STATE_UNSPECIFIED").isAlive)
+    }
+
+    @Test
+    fun parseActivityTimestamp_handlesVariousIsoFormatsAndFallback() {
+        val t1 = parseActivityTimestamp("2026-10-21T01:00:00Z")
+        val t2 = parseActivityTimestamp("2026-10-21T01:00:00.000Z")
+        assertEquals(t1, t2)
+        assertTrue(t1 > 0L)
+
+        val tRelative = parseActivityTimestamp("방금 전")
+        assertTrue(tRelative > t1)
+
+        val tBlank = parseActivityTimestamp("")
+        assertEquals(0L, tBlank)
+    }
+
+    @Test
+    fun parseGitHubRepoInput_handlesOwnerAndRepoSeparately() {
+        val result = parseGitHubRepoInput("torvalds", "linux")
+        assertNotNull(result)
+        assertEquals("torvalds", result!!.first)
+        assertEquals("linux", result.second)
+
+        val resultWithSpaces = parseGitHubRepoInput("  google  ", "  flutter  ")
+        assertNotNull(resultWithSpaces)
+        assertEquals("google", resultWithSpaces!!.first)
+        assertEquals("flutter", resultWithSpaces.second)
+    }
+
+    @Test
+    fun parseGitHubRepoInput_handlesUrlAndSlashGracefully() {
+        // 소유자 필드에 전체 URL이 들어온 경우
+        val urlResult = parseGitHubRepoInput("https://github.com/facebook/react-native", "")
+        assertNotNull(urlResult)
+        assertEquals("facebook", urlResult!!.first)
+        assertEquals("react-native", urlResult.second)
+
+        // .git 확장자가 포함된 경우
+        val gitResult = parseGitHubRepoInput("https://github.com/JetBrains/kotlin.git", "")
+        assertNotNull(gitResult)
+        assertEquals("JetBrains", gitResult!!.first)
+        assertEquals("kotlin", gitResult.second)
+
+        // 슬래시 형식 "owner/repo"가 한 필드에 들어온 경우
+        val slashResult = parseGitHubRepoInput("facebook/react-native", "")
+        assertNotNull(slashResult)
+        assertEquals("facebook", slashResult!!.first)
+        assertEquals("react-native", slashResult.second)
+    }
+
+    @Test
+    fun parseGitHubRepoInput_rejectsEmptyOrBlankInput() {
+        assertNull(parseGitHubRepoInput("", ""))
+        assertNull(parseGitHubRepoInput("   ", "   "))
+        assertNull(parseGitHubRepoInput("onlyowner", ""))
+        assertNull(parseGitHubRepoInput("", "onlyrepo"))
+    }
+
+    @Test
+    fun cachedSourceEntity_isCustomFlag_worksCorrectly() {
+        val standardSource = CachedSourceEntity(
+            name = "sources/github/google/jules",
+            id = "github/google/jules",
+            owner = "google",
+            repo = "jules",
+            isPrivate = false,
+            defaultBranch = "main",
+            branchesCsv = "main"
+        )
+        assertFalse(standardSource.isCustom)
+
+        val customSource = standardSource.copy(
+            name = "sources/github/torvalds/linux",
+            id = "github/torvalds/linux",
+            owner = "torvalds",
+            repo = "linux",
+            isCustom = true
+        )
+        assertTrue(customSource.isCustom)
+        assertEquals("sources/github/torvalds/linux", customSource.name)
     }
 }
 
