@@ -171,7 +171,7 @@ fun SourcesScreen(viewModel: JulesViewModel) {
 
     // 저장소별 Environment Setup Script / Env Vars / Repository Memory 설정 다이얼로그 (Jules 웹 Repo Configuration 대응)
     configTargetSource?.let { target ->
-        val repoSlug = "${target.owner}_${target.repo}".lowercase()
+        val repoSlug = "${target.owner}_${target.repo}".lowercase(java.util.Locale.ROOT)
         var scriptText by remember(target.name) { mutableStateOf(prefs["env_script_$repoSlug"] ?: "") }
         var envVarsText by remember(target.name) { mutableStateOf(prefs["env_vars_$repoSlug"] ?: "") }
         var memoryText by remember(target.name) { mutableStateOf(prefs["repo_memory_$repoSlug"] ?: "") }
@@ -332,13 +332,14 @@ fun SourcesScreen(viewModel: JulesViewModel) {
             }
         } else {
             items(filteredSources, key = { it.name }) { src ->
-                val repoSlug = "${src.owner}_${src.repo}".lowercase()
+                val repoSlug = "${src.owner}_${src.repo}".lowercase(java.util.Locale.ROOT)
                 val hasConfiguredEnv = !prefs["env_script_$repoSlug"].isNullOrBlank() ||
                     !prefs["env_vars_$repoSlug"].isNullOrBlank() ||
                     !prefs["repo_memory_$repoSlug"].isNullOrBlank()
                 SourceItemCard(
                     source = src,
                     hasConfiguredEnv = hasConfiguredEnv,
+                    onRefresh = { viewModel.refreshSource(src.name) },
                     onConfigureEnv = { configTargetSource = src }
                 )
             }
@@ -347,9 +348,11 @@ fun SourcesScreen(viewModel: JulesViewModel) {
 }
 
 @Composable
+/** 저장소 정보, 브랜치와 설정·새로고침 동작을 표시합니다. */
 private fun SourceItemCard(
     source: CachedSourceEntity,
     hasConfiguredEnv: Boolean,
+    onRefresh: () -> Unit,
     onConfigureEnv: () -> Unit
 ) {
     val context = LocalContext.current
@@ -462,6 +465,9 @@ private fun SourceItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = onRefresh) {
+                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.source_refresh))
+                }
                 OutlinedButton(
                     onClick = onConfigureEnv,
                     shape = RoundedCornerShape(10.dp),
@@ -1135,6 +1141,14 @@ fun SettingsScreen(viewModel: JulesViewModel) {
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
+                    Text(stringResource(R.string.jules_web_features_desc), style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = {
+                        JulesBrowserUtils.openUrlInDefaultBrowser(context, "https://jules.google.com")
+                    }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.jules_web_features))
+                    }
                     OutlinedButton(
                         onClick = {
                             JulesBrowserUtils.openUrlInDefaultBrowser(context, "https://jules.google.com/settings")

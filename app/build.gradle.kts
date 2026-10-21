@@ -69,6 +69,8 @@ android {
     buildTypes {
         val relSigning = signingConfigs.findByName("release")
         debug {
+            // 검증용 앱을 기존 릴리스 앱과 별도로 설치하여 사용자 데이터를 보존합니다.
+            applicationIdSuffix = ".debug"
             // 디버그/릴리즈 APK 간 교차 덮어쓰기 시 INSTALL_FAILED_UPDATE_INCOMPATIBLE 방지 및 CN=Android Debug 차단 회피
             if (relSigning?.storeFile?.exists() == true) {
                 signingConfig = relSigning

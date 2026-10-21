@@ -71,6 +71,24 @@ fun SessionDetailScreen(
     val prefs by viewModel.preferences.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isAwaitingResponse by viewModel.isAwaitingResponse.collectAsState()
+    val deletingIds by viewModel.deletingSessionIds.collectAsState()
+    var showMenu by remember { mutableStateOf(false) }
+    var confirmDelete by remember(session?.sessionId) { mutableStateOf(false) }
+    val deleting = session?.sessionId in deletingIds
+    if (confirmDelete) {
+        session?.let { target ->
+            DeleteSessionDialog(
+                title = target.displayTitle,
+                onDismiss = { confirmDelete = false },
+                onConfirm = {
+                    confirmDelete = false
+                    viewModel.deleteSession(target.sessionId) {
+                        if (viewModel.selectedSessionId.value == null) onBack()
+                    }
+                }
+            )
+        }
+    }
 
     val isKo = remember(prefs) {
         val lang = prefs["app_language"] ?: "SYSTEM"
@@ -261,8 +279,22 @@ fun SessionDetailScreen(
                                 tint = if (isSpeaking) JulesWarning else JulesPrimary
                             )
                         }
-                        IconButton(onClick = { viewModel.refreshSelectedSession() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = null)
+                        Box {
+                            IconButton(onClick = { showMenu = true }, enabled = session != null && !deleting) {
+                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.session_actions))
+                            }
+                            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.session_refresh)) },
+                                    onClick = { showMenu = false; viewModel.refreshSelectedSession() },
+                                    leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.session_delete_action)) },
+                                    onClick = { showMenu = false; confirmDelete = true },
+                                    leadingIcon = { Icon(Icons.Default.DeleteOutline, contentDescription = null) }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = JulesSurface)
@@ -311,7 +343,7 @@ fun SessionDetailScreen(
                             viewModel.sendMessage(sId, messageInput)
                             messageInput = ""
                         },
-                        enabled = messageInput.isNotBlank() && session != null && !isAwaitingResponse,
+                        enabled = messageInput.isNotBlank() && session != null && !isAwaitingResponse && !deleting,
                         shape = RoundedCornerShape(12.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = JulesBrandPurple,
@@ -398,7 +430,7 @@ fun SessionDetailScreen(
                             ) {
                                 Button(
                                     onClick = { viewModel.nudgeStalledSession(curSession.sessionId) },
-                                    enabled = !isLoading && !isAwaitingResponse,
+                                    enabled = !isLoading && !isAwaitingResponse && !deleting,
                                     shape = RoundedCornerShape(10.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = JulesWarning, contentColor = Color.Black),
                                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
@@ -411,7 +443,7 @@ fun SessionDetailScreen(
                                     onClick = {
                                         viewModel.recreateStalledSession(curSession)
                                     },
-                                    enabled = !isLoading,
+                                    enabled = !isLoading && !deleting,
                                     shape = RoundedCornerShape(10.dp),
                                     border = BorderStroke(1.dp, JulesPrimary),
                                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
@@ -433,6 +465,16 @@ fun SessionDetailScreen(
                                     Spacer(Modifier.width(4.dp))
                                     Text(stringResource(R.string.btn_open_web_console), fontSize = 11.sp, color = JulesSecondary)
                                 }
+                            }
+                            OutlinedButton(
+                                onClick = { confirmDelete = true },
+                                enabled = !deleting,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                            ) {
+                                Icon(Icons.Default.DeleteOutline, contentDescription = null)
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.session_delete_action))
                             }
                         }
                     }
@@ -625,6 +667,9 @@ fun SessionDetailScreen(
                             items(activities, key = { it.id.ifBlank { it.name + it.createTime } }) { act ->
                                 ActivityTimelineCard(
                                     activity = act,
+                                    onRefresh = if (act.id.startsWith("optimistic-") || act.id.isBlank()) null else {
+                                        { session?.sessionId?.let { viewModel.refreshActivity(it, act.id) } }
+                                    },
                                     onCopyPatch = { patchText ->
                                         copyToClipboard(context, "Jules Git Patch", patchText)
                                         viewModel.showMessage("Git patch copied.")
@@ -650,7 +695,8 @@ fun SessionDetailScreen(
                             items(allPlans) { plan ->
                                 PlanDetailCard(
                                     plan = plan,
-                                    canApprove = session?.state.equals("AWAITING_PLAN_APPROVAL", ignoreCase = true),
+                                    canApprove = plan == allPlans.lastOrNull() && !isLoading && !deleting &&
+                                        session?.state.equals("AWAITING_PLAN_APPROVAL", ignoreCase = true),
                                     onApprove = { session?.sessionId?.let { viewModel.approvePlan(it) } }
                                 )
                             }
@@ -703,7 +749,8 @@ fun SessionDetailScreen(
 @Composable
 fun ActivityTimelineCard(
     activity: JulesActivity,
-    onCopyPatch: (String) -> Unit
+    onCopyPatch: (String) -> Unit,
+    onRefresh: (() -> Unit)? = null
 ) {
     val isUser = activity.originator.equals("user", ignoreCase = true) || activity.resolvedUserMessage != null
     Surface(
@@ -754,12 +801,19 @@ fun ActivityTimelineCard(
                         color = if (isUser) JulesSecondary else JulesPrimary
                     )
                 }
-                Text(
-                    text = activity.createTime.take(19).replace("T", " "),
-                    fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = JulesTextMuted
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = activity.createTime.take(19).replace("T", " "),
+                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = JulesTextMuted
+                    )
+                    if (onRefresh != null) {
+                        IconButton(onClick = onRefresh) {
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.activity_refresh))
+                        }
+                    }
+                }
             }
 
             activity.resolvedUserMessage?.takeIf { it.isNotBlank() }?.let { msg ->

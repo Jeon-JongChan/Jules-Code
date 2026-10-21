@@ -10,12 +10,15 @@ import com.jules.code.data.remote.JulesApiClient
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 
 /**
@@ -105,6 +108,12 @@ class JulesViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private var pollingJob: Job? = null
+    private var refreshJob: Job? = null
+    private val sessionCacheMutex = Mutex()
+    private val deletedSessionIds = mutableSetOf<String>()
+    private val _deletingSessionIds = MutableStateFlow<Set<String>>(emptySet())
+    /** 삭제 요청 중인 세션의 중복 실행과 버튼 조작을 막습니다. */
+    val deletingSessionIds: StateFlow<Set<String>> = _deletingSessionIds.asStateFlow()
 
     /**
      * 채팅 전송 직후 서버 `listActivities` 응답에 아직 반영되지 않았더라도
@@ -125,6 +134,12 @@ class JulesViewModel(
         // 활성 API 키 변경 시 자동으로 세션 및 소스 목록 동기화
         viewModelScope.launch {
             activeApiKey.map { it?.id to it?.apiKey }.distinctUntilChanged().collectLatest { (id, key) ->
+                refreshJob?.cancel()
+                closeSession()
+                _selectedSessionId.value = null
+                _selectedSessionDetail.value = null
+                _activities.value = emptyList()
+                dao.clearSources()
                 if (id != null && !key.isNullOrBlank()) {
                     refreshAll()
                 }
@@ -242,10 +257,12 @@ class JulesViewModel(
             viewModelScope.launch { seedDemoData(activeEntity.id) }
             return
         }
-        viewModelScope.launch {
+        if (refreshJob?.isActive == true) return
+        refreshJob = viewModelScope.launch {
             _isLoading.value = true
-            coroutineScope {
-                val sourcesDeferred = async { api.listSources(key) }
+            try {
+              coroutineScope {
+                val sourcesDeferred = async { api.listAllSources(key) }
                 val activeSessionsDeferred = async { syncSessionsForApiKey(activeEntity) }
 
                 // 비활성 API 키들도 백그라운드에서 병렬로 세션 목록을 동기화하여 키별 소모량(24h/동시실행)을 최신 상태로 유지
@@ -255,7 +272,7 @@ class JulesViewModel(
                 }
 
                 sourcesDeferred.await().onSuccess { resp ->
-                    val entities = resp.sources.map { s ->
+                    val entities = resp.map { s ->
                         CachedSourceEntity(
                             name = s.name.ifBlank { "sources/${s.id}" },
                             id = s.id.ifBlank { s.name.removePrefix("sources/") },
@@ -266,16 +283,19 @@ class JulesViewModel(
                             branchesCsv = s.availableBranches.joinToString(",")
                         )
                     }
-                    dao.clearSources()
-                    dao.upsertSources(entities)
+                    if (activeApiKey.value?.id == activeEntity.id) dao.replaceSources(entities)
+                }.onFailure { err ->
+                    showMessage("저장소 동기화 실패: ${err.message}")
                 }
 
                 activeSessionsDeferred.await().onFailure { err ->
                     showMessage("동기화 실패: ${err.message}")
                 }
                 otherKeysDeferred.awaitAll()
+              }
+            } finally {
+                _isLoading.value = false
             }
-            _isLoading.value = false
         }
     }
 
@@ -284,29 +304,21 @@ class JulesViewModel(
      * 무응답/스턱(Stalled) 여부 및 진행 단계를 DB에 갱신합니다.
      */
     private suspend fun syncSessionsForApiKey(keyEntity: ApiKeyEntity): Result<Unit> = coroutineScope {
-        api.listSessions(keyEntity.apiKey).map { resp ->
+        api.listAllSessions(keyEntity.apiKey).map { remoteSessions ->
             val existingById = allSessions.value.associateBy { it.sessionId }
             // 활성 세션(최대 10개)에 대해 병렬로 액티비티를 조회하여 실제 에이전트 마지막 활동 시각과 무응답 상태를 진단
-            val aliveSessions = resp.sessions.filter { it.isAlive }.take(10)
+            val aliveSessions = remoteSessions.filter { it.isAlive }.take(10)
             val activitiesBySessionId = aliveSessions.map { s ->
                 async {
-                    val acts = api.listActivities(keyEntity.apiKey, s.sessionId).getOrNull()?.activities
+                    val acts = api.listAllActivities(keyEntity.apiKey, s.sessionId).getOrNull()
                     if (acts != null) {
-                        inMemoryActivitiesCache[s.sessionId] = acts
-                        runCatching {
-                            dao.upsertCachedActivities(
-                                CachedSessionActivitiesEntity(
-                                    sessionId = s.sessionId,
-                                    activitiesJson = api.json.encodeToString(acts)
-                                )
-                            )
-                        }
+                        cacheActivities(s.sessionId, acts)
                     }
                     s.sessionId to acts
                 }
             }.awaitAll().toMap()
 
-            val entities = resp.sessions.map { s ->
+            val entities = remoteSessions.map { s ->
                 val prev = existingById[s.sessionId]
                 val freshActs = activitiesBySessionId[s.sessionId] ?: inMemoryActivitiesCache[s.sessionId]
                 s.toEntity(
@@ -316,7 +328,20 @@ class JulesViewModel(
                     previousEntity = prev
                 )
             }
-            dao.upsertSessions(entities)
+            cacheSessions(entities)
+        }
+    }
+
+    /** 삭제와 캐시 쓰기를 직렬화하여 늦은 응답이 삭제한 세션을 복구하지 않게 합니다. */
+    private suspend fun cacheSessions(items: List<CachedSessionEntity>) = sessionCacheMutex.withLock {
+        dao.upsertSessions(items.filterNot { it.sessionId in deletedSessionIds })
+    }
+
+    /** 메모리와 디스크의 활동 캐시를 삭제된 세션을 제외하고 함께 갱신합니다. */
+    private suspend fun cacheActivities(sessionId: String, items: List<JulesActivity>) = sessionCacheMutex.withLock {
+        if (sessionId !in deletedSessionIds) {
+            dao.upsertCachedActivities(CachedSessionActivitiesEntity(sessionId, api.json.encodeToString(items)))
+            inMemoryActivitiesCache[sessionId] = items
         }
     }
 
@@ -350,7 +375,8 @@ class JulesViewModel(
         val currentPrefs = preferences.value
         val langPref = currentPrefs["app_language"]
         val responseLangCode = JulesLocaleManager.resolveLocale(langPref).language
-        val repoKey = sourceName?.removePrefix("sources/github/")?.removePrefix("sources/") ?: "repoless"
+        val selectedSource = sources.value.find { it.name == sourceName }
+        val repoKey = selectedSource?.let { "${it.owner}_${it.repo}".lowercase(java.util.Locale.ROOT) } ?: "repoless"
         val setupScript = currentPrefs["env_script_$repoKey"].orEmpty().trim()
         val envVars = currentPrefs["env_vars_$repoKey"].orEmpty().trim()
         val repoMemory = currentPrefs["repo_memory_$repoKey"].orEmpty().trim()
@@ -498,11 +524,15 @@ class JulesViewModel(
      * 병렬(Parallel) 백그라운드 스트림 폴링을 시작합니다.
      */
     fun openSession(sessionId: String) {
+        if (sessionId in deletedSessionIds) return
         val isSwitchingSession = _selectedSessionId.value != sessionId
         if (isSwitchingSession) {
             _isAwaitingResponse.value = false
         }
         _selectedSessionId.value = sessionId
+        if (isSwitchingSession && _selectedSessionDetail.value?.sessionId != sessionId) {
+            _selectedSessionDetail.value = null
+        }
 
         // 1. 메모리 내 세션 리스트 및 액티비티 캐시에서 즉시(0ms) 바인딩하여 빈 화면 대기 제거
         allSessions.value.find { it.sessionId == sessionId }?.let { cachedEntity ->
@@ -561,6 +591,7 @@ class JulesViewModel(
     fun closeSession() {
         pollingJob?.cancel()
         pollingJob = null
+        _selectedSessionId.value = null
         _isAwaitingResponse.value = false
     }
 
@@ -596,26 +627,20 @@ class JulesViewModel(
 
         coroutineScope {
             val sessionDeferred = async { api.getSession(key, sessionId) }
-            val activitiesDeferred = async { api.listActivities(key, sessionId) }
+            val activitiesDeferred = async { api.listAllActivities(key, sessionId) }
 
             val sessionResult = sessionDeferred.await()
             val activitiesResult = activitiesDeferred.await()
 
-            val rawServerActs = activitiesResult.getOrNull()?.activities
+            // 전환·삭제 이후 도착한 요청 결과는 현재 화면을 덮어쓰지 않습니다.
+            if (activeApiKey.value?.id != activeEntity.id || sessionId in deletedSessionIds) return@coroutineScope
+            val rawServerActs = activitiesResult.getOrNull()
             if (rawServerActs != null) {
                 val merged = mergeActivitiesWithOptimistic(sessionId, rawServerActs)
-                inMemoryActivitiesCache[sessionId] = rawServerActs
                 if (_selectedSessionId.value == sessionId) {
                     _activities.value = merged
                 }
-                runCatching {
-                    dao.upsertCachedActivities(
-                        CachedSessionActivitiesEntity(
-                            sessionId = sessionId,
-                            activitiesJson = api.json.encodeToString(rawServerActs)
-                        )
-                    )
-                }
+                cacheActivities(sessionId, rawServerActs)
             }
 
             sessionResult.onSuccess { session ->
@@ -625,7 +650,7 @@ class JulesViewModel(
                 val prev = dao.getCachedSession(sessionId)
                 val pinned = prev?.isPinned ?: false
                 val ownerKeyId = prev?.apiKeyId?.takeIf { it > 0L } ?: activeEntity.id
-                dao.upsertSessions(
+                cacheSessions(
                     listOf(
                         session.toEntity(
                             isPinned = pinned,
@@ -636,6 +661,8 @@ class JulesViewModel(
                     )
                 )
             }
+            sessionResult.onFailure { showMessage("세션 조회 실패: ${it.message}") }
+            activitiesResult.onFailure { showMessage("활동 조회 실패: ${it.message}") }
         }
     }
 
@@ -680,7 +707,7 @@ class JulesViewModel(
         val sorted = sortActivitiesChronologically(combined)
 
         // 에이전트 응답이 도착했거나 세션이 종료된 경우에만 응답 대기 로딩 해제
-        if (_isAwaitingResponse.value) {
+        if (_selectedSessionId.value == sessionId && _isAwaitingResponse.value) {
             val hasPending = pendingOptimisticMessages[sessionId]?.isNotEmpty() == true
             val lastIsUser = sorted.lastOrNull()?.originator?.equals("user", ignoreCase = true) == true
             val sessionAlive = _selectedSessionDetail.value?.isAlive != false
@@ -761,7 +788,7 @@ class JulesViewModel(
 
             viewModelScope.launch {
                 delay(1200L) // 실제 에이전트 응답 생성 지연 시뮬레이션
-                val updated = _activities.value.toMutableList()
+                val updated = (inMemoryActivitiesCache[sessionId] ?: current).toMutableList()
                 updated.add(
                     JulesActivity(
                         id = "agent-${System.currentTimeMillis() + 1}",
@@ -779,8 +806,10 @@ class JulesViewModel(
                 )
                 val sorted = sortActivitiesChronologically(updated)
                 inMemoryActivitiesCache[sessionId] = sorted
-                _activities.value = sorted
-                _isAwaitingResponse.value = false
+                if (_selectedSessionId.value == sessionId) {
+                    _activities.value = sorted
+                    _isAwaitingResponse.value = false
+                }
             }
             return
         }
@@ -793,12 +822,14 @@ class JulesViewModel(
         viewModelScope.launch {
             api.sendMessage(key, sessionId, enrichedMessage)
                 .onSuccess {
-                    openSession(sessionId)
+                    if (_selectedSessionId.value == sessionId && activeApiKey.value?.apiKey == key) openSession(sessionId)
                 }
                 .onFailure { err ->
                     pendingOptimisticMessages[sessionId]?.removeAll { it.id == optimisticUserAct.id }
-                    _activities.value = sortActivitiesChronologically(_activities.value.filterNot { it.id == optimisticUserAct.id })
-                    _isAwaitingResponse.value = false
+                    if (_selectedSessionId.value == sessionId) {
+                        _activities.value = sortActivitiesChronologically(_activities.value.filterNot { it.id == optimisticUserAct.id })
+                        _isAwaitingResponse.value = false
+                    }
                     showMessage("메시지 전송 실패: ${err.message}")
                 }
         }
@@ -808,24 +839,81 @@ class JulesViewModel(
      * 세션을 삭제합니다.
      */
     fun deleteSession(sessionId: String, onDeleted: () -> Unit = {}) {
-        val key = activeApiKey.value?.apiKey ?: return
+        if (sessionId in _deletingSessionIds.value || sessionId in deletedSessionIds) return
+        _deletingSessionIds.update { it + sessionId }
         viewModelScope.launch {
-            if (key != DEMO_API_KEY) {
-                api.deleteSession(key, sessionId).onFailure { err ->
-                    showMessage("원격 세션 삭제 오류(로컬 캐시는 제거됨): ${err.message}")
+          try {
+            val cached = dao.getCachedSession(sessionId)
+            val ownerId = cached?.apiKeyId?.takeIf { it != 0L } ?: activeApiKey.value?.id
+            val owner = dao.observeApiKeys().first().find { it.id == ownerId }
+                ?: error("이 세션의 API 키 프로필을 찾을 수 없습니다.")
+            if (owner.apiKey != DEMO_API_KEY) {
+                val result = api.deleteSession(owner.apiKey, sessionId)
+                val error = result.exceptionOrNull()
+                // 이미 원격에서 삭제된 세션(404)도 로컬 정리를 허용합니다.
+                if (error != null && (error as? com.jules.code.data.remote.JulesApiException)?.statusCode != 404) {
+                    throw error
                 }
             }
-            dao.deleteCachedSession(sessionId)
-            dao.deleteCachedActivities(sessionId)
-            inMemoryActivitiesCache.remove(sessionId)
-            pendingOptimisticMessages.remove(sessionId)
+            sessionCacheMutex.withLock {
+                deletedSessionIds.add(sessionId)
+                dao.deleteSessionCache(sessionId)
+                inMemoryActivitiesCache.remove(sessionId)
+                pendingOptimisticMessages.remove(sessionId)
+            }
             if (_selectedSessionId.value == sessionId) {
+                closeSession()
                 _selectedSessionId.value = null
                 _selectedSessionDetail.value = null
                 _activities.value = emptyList()
             }
             showMessage("세션이 삭제되었습니다.")
             onDeleted()
+          } catch (cancelled: CancellationException) {
+            throw cancelled
+          } catch (error: Exception) {
+            sessionCacheMutex.withLock { deletedSessionIds.remove(sessionId) }
+            showMessage("세션 삭제 실패: ${error.message}")
+          } finally {
+            _deletingSessionIds.update { it - sessionId }
+          }
+        }
+    }
+
+    /** 선택한 활동만 단건 API로 갱신하고 기존 타임라인과 합칩니다. */
+    fun refreshActivity(sessionId: String, activityId: String) {
+        val owner = activeApiKey.value ?: return
+        if (owner.apiKey == DEMO_API_KEY) return
+        viewModelScope.launch {
+            api.getActivity(owner.apiKey, sessionId, activityId).onSuccess { fresh ->
+                if (activeApiKey.value?.id != owner.id || sessionId in deletedSessionIds) return@onSuccess
+                val updated = inMemoryActivitiesCache[sessionId].orEmpty().map {
+                    if (it.id == activityId || it.name.substringAfterLast('/') == activityId) fresh else it
+                }
+                cacheActivities(sessionId, updated)
+                if (_selectedSessionId.value == sessionId) _activities.value = mergeActivitiesWithOptimistic(sessionId, updated)
+            }.onFailure { showMessage("활동 새로고침 실패: ${it.message}") }
+        }
+    }
+
+    /** 저장소 단건 조회로 브랜치와 메타데이터를 갱신합니다. */
+    fun refreshSource(sourceName: String) {
+        val owner = activeApiKey.value ?: return
+        if (owner.apiKey == DEMO_API_KEY) return
+        viewModelScope.launch {
+            api.getSource(owner.apiKey, sourceName).onSuccess { source ->
+                if (activeApiKey.value?.id == owner.id) {
+                    dao.upsertSources(listOf(CachedSourceEntity(
+                        name = source.name.ifBlank { sourceName },
+                        id = source.id.ifBlank { sourceName.removePrefix("sources/") },
+                        owner = source.githubRepo?.owner.orEmpty(),
+                        repo = source.githubRepo?.repo.orEmpty(),
+                        isPrivate = source.githubRepo?.isPrivate ?: false,
+                        defaultBranch = source.defaultBranchName,
+                        branchesCsv = source.availableBranches.joinToString(",")
+                    )))
+                }
+            }.onFailure { showMessage("저장소 조회 실패: ${it.message}") }
         }
     }
 
@@ -987,7 +1075,9 @@ class JulesViewModel(
         dao.upsertSources(demoSources)
 
         val currentDemoSessions = dao.observeSessions().first().filter { it.apiKeyId == demoKeyId || it.sessionId.startsWith("demo-") }
-        if (currentDemoSessions.isEmpty()) {
+        val demoSeededKey = "demo_seeded_$demoKeyId"
+        val wasSeeded = dao.observePreferences().first().any { it.prefKey == demoSeededKey && it.prefValue == "true" }
+        if (currentDemoSessions.isEmpty() && !wasSeeded) {
             val demoSessions = listOf(
                 CachedSessionEntity(
                     sessionId = "demo-1001",
@@ -1031,6 +1121,7 @@ class JulesViewModel(
             )
             dao.upsertSessions(demoSessions)
         }
+        dao.setPreference(AppPreferenceEntity(demoSeededKey, "true"))
     }
 
     private fun buildDemoActivities(session: CachedSessionEntity): List<JulesActivity> {

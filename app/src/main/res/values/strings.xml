@@ -42,11 +42,11 @@
     <string name="btn_launch_with_plan">Request Plan (Code with Plan)</string>
     <string name="btn_launch_agent">Start Jules Task (Launch Agent)</string>
     <string name="tab_recent_sessions">Recent Sessions (%1$d)</string>
-    <string name="tab_scheduled_templates">Scheduled &amp; Templates (%1$d)</string>
+    <string name="tab_scheduled_templates">Manual Templates (%1$d)</string>
     <string name="empty_sessions_title">No Active Coding Sessions</string>
     <string name="empty_sessions_subtitle">Enter a prompt above or tap a quick suggestion chip to launch an autonomous coding session.</string>
-    <string name="scheduled_header">Scheduled Maintenance &amp; Recurring Automation</string>
-    <string name="scheduled_add_btn">Add Schedule</string>
+    <string name="scheduled_header">Reusable templates · Schedule automatically in Jules web</string>
+    <string name="scheduled_add_btn">Add Template</string>
     <string name="template_fill_composer">Fill Composer</string>
     <string name="template_run_now">Run Now</string>
 
@@ -57,15 +57,15 @@
     <string name="dialog_file_pin_confirm">Add to Prompt</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_save">Save</string>
-    <string name="dialog_new_template_title">Add Scheduled Task / Template</string>
+    <string name="dialog_new_template_title">Add Manual Template</string>
     <string name="dialog_new_template_name">Task Name</string>
     <string name="dialog_new_template_prompt">Recurring Prompt</string>
     <string name="dialog_new_template_require_approval">Require plan approval before execution</string>
     <string name="cadence_daily">Daily</string>
     <string name="cadence_weekly">Weekly</string>
     <string name="cadence_manual">Manual</string>
-    <string name="cadence_badge_daily">Daily Run (CRON: DAILY)</string>
-    <string name="cadence_badge_weekly">Weekly Run (CRON: WEEKLY)</string>
+    <string name="cadence_badge_daily">Daily maintenance template · Run manually</string>
+    <string name="cadence_badge_weekly">Weekly maintenance template · Run manually</string>
     <string name="cadence_badge_manual">Manual Template (MANUAL)</string>
 
     <!-- Sessions List -->
@@ -89,7 +89,7 @@
     <string name="source_env_configure">Configure VM Env &amp; Memory</string>
     <string name="source_open_github">Open GitHub</string>
     <string name="dialog_repo_config_title">%1$s Env &amp; Memory Setup</string>
-    <string name="dialog_repo_config_desc">Configure Repository Setup Script, Environment Variables, and Repository Memory (AGENTS.md conventions). Automatically injected into Cloud VMs.</string>
+    <string name="dialog_repo_config_desc">Save instructions to include in new session prompts. This does not change VM settings in Jules web. Do not enter passwords, tokens, or other secrets.</string>
     <string name="dialog_repo_script_label">Environment Setup Script</string>
     <string name="dialog_repo_env_label">Environment Variables</string>
     <string name="dialog_repo_memory_label">Repository Memory / Conventions (AGENTS.md)</string>
@@ -191,4 +191,13 @@
     <string name="btn_recreate_session">Restart in New VM</string>
     <string name="btn_open_web_console">Open Web Console</string>
     <string name="filter_stalled">Stalled (%1$d)</string>
+    <string name="session_delete_title">Delete session?</string>
+    <string name="session_delete_warning">Delete “%1$s” from Jules and this device? This cannot be undone.</string>
+    <string name="session_delete_action">Delete session</string>
+    <string name="session_actions">Session actions</string>
+    <string name="session_refresh">Refresh session</string>
+    <string name="activity_refresh">Refresh activity</string>
+    <string name="source_refresh">Refresh repository branches</string>
+    <string name="jules_web_features">Jules web features</string>
+    <string name="jules_web_features_desc">Manage scheduled tasks, suggested tasks, and repository VM settings in Jules web. Open a session on the web to pause, resume, or manually publish changes.</string>
 </resources>

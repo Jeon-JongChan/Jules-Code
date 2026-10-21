@@ -172,6 +172,13 @@ interface JulesDao {
     @Query("DELETE FROM cached_sessions WHERE sessionId = :sessionId")
     suspend fun deleteCachedSession(sessionId: String)
 
+    /** 세션과 해당 활동 캐시를 하나의 트랜잭션으로 제거합니다. */
+    @Transaction
+    suspend fun deleteSessionCache(sessionId: String) {
+        deleteCachedActivities(sessionId)
+        deleteCachedSession(sessionId)
+    }
+
     @Query("DELETE FROM cached_sessions WHERE apiKeyId = :apiKeyId")
     suspend fun deleteSessionsByApiKey(apiKeyId: Long)
 
@@ -187,6 +194,13 @@ interface JulesDao {
 
     @Query("DELETE FROM cached_sources")
     suspend fun clearSources()
+
+    /** 목록 교체 중 빈 목록이 노출되거나 일부만 저장되지 않도록 처리합니다. */
+    @Transaction
+    suspend fun replaceSources(items: List<CachedSourceEntity>) {
+        clearSources()
+        upsertSources(items)
+    }
 
     // --- Scheduled Tasks & Prompt Templates ---
     @Query("SELECT * FROM scheduled_templates ORDER BY id DESC")

@@ -24,6 +24,7 @@ class JulesInstrumentedTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
 
+    /** 별도 메모리 DB에서 API 키 저장과 활성 프로필 전환을 확인합니다. */
     @Test
     fun roomDatabase_savesAndSwitchesApiKeyProfiles() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -46,35 +47,27 @@ class JulesInstrumentedTest {
         db.close()
     }
 
+    /** 데이터·언어 로딩 후 실제 탭 이동과 한국어 대시보드 표시를 확인합니다. */
     @Test
     fun onboardingToDemoDashboardAndSessionDetail_worksEndToEnd() {
-        // 첫 실행 시 API 키 온보딩 화면 또는 대시보드 확인
-        composeRule.waitForIdle()
-        val demoBtnKo = composeRule.onAllNodesWithText("데모", substring = true)
-        val demoBtnEn = composeRule.onAllNodesWithText("Demo", substring = true)
-        if (demoBtnKo.fetchSemanticsNodes().isNotEmpty()) {
-            demoBtnKo[0].performClick()
-            composeRule.waitForIdle()
-        } else if (demoBtnEn.fetchSemanticsNodes().isNotEmpty()) {
-            demoBtnEn[0].performClick()
-            composeRule.waitForIdle()
+        // Room·언어 설정 로딩은 Compose 유휴 상태와 별개이므로 실제 화면을 기다립니다.
+        val sourcesMatcher = hasText("저장소") or hasText("Sources")
+        val demoMatcher = hasText("API 키 없이 데모 시뮬레이션 모드로 체험") or hasText("Try Demo Simulation Mode")
+        composeRule.waitUntil(timeoutMillis = 10000) {
+            composeRule.onAllNodes(sourcesMatcher or demoMatcher).fetchSemanticsNodes().isNotEmpty()
+        }
+        if (composeRule.onAllNodes(sourcesMatcher).fetchSemanticsNodes().isEmpty()) {
+            composeRule.onNode(demoMatcher).performClick()
+        }
+        composeRule.waitUntil(timeoutMillis = 10000) {
+            composeRule.onAllNodes(sourcesMatcher).fetchSemanticsNodes().isNotEmpty()
         }
 
         // 하단 네비게이션 탭 이동 검증 (저장소/Sources -> 설정/Settings -> 대시보드/Dashboard)
-        val sourcesTab = composeRule.onAllNodesWithText("저장소")
-        if (sourcesTab.fetchSemanticsNodes().isNotEmpty()) {
-            sourcesTab[0].performClick()
-        } else {
-            composeRule.onAllNodesWithText("Sources")[0].performClick()
-        }
+        composeRule.onAllNodes(sourcesMatcher)[0].performClick()
         composeRule.waitForIdle()
 
-        val settingsTab = composeRule.onAllNodesWithText("설정")
-        if (settingsTab.fetchSemanticsNodes().isNotEmpty()) {
-            settingsTab[0].performClick()
-        } else {
-            composeRule.onAllNodesWithText("Settings")[0].performClick()
-        }
+        composeRule.onAllNodes(hasText("설정") or hasText("Settings"))[0].performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Quota", substring = true).assertIsDisplayed()
 

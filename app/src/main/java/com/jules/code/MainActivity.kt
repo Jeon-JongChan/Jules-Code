@@ -66,6 +66,14 @@ fun JulesMobileApp(
 
     var currentTab by remember { mutableIntStateOf(0) } // 0: 대시보드, 1: 세션, 2: 저장소(Sources), 3: 설정
     var openedSessionId by remember { mutableStateOf(initialSessionId) }
+    var previousKeyId by remember { mutableStateOf<Long?>(null) }
+
+    // 계정 전환 뒤 이전 계정의 상세 화면이 남지 않도록 닫습니다.
+    LaunchedEffect(activeKey?.id) {
+        if (previousKeyId != null && previousKeyId != activeKey?.id) openedSessionId = null
+        previousKeyId = activeKey?.id
+        if (activeKey != null && openedSessionId != null) viewModel.openSession(openedSessionId!!)
+    }
 
     val currentTier = remember(activeKey, prefs) {
         JulesViewModel.getTierLimits(activeKey?.planTier?.ifBlank { prefs["jules_plan_tier"] } ?: prefs["jules_plan_tier"])

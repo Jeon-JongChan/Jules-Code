@@ -1317,6 +1317,14 @@ fun SessionSummaryCard(
 ) {
     val isStalled = remember(session) { JulesViewModel.isCachedSessionStalled(session) }
     val context = LocalContext.current
+    var confirmDelete by remember(session.sessionId) { mutableStateOf(false) }
+    if (confirmDelete) {
+        DeleteSessionDialog(
+            title = session.title,
+            onDismiss = { confirmDelete = false },
+            onConfirm = { confirmDelete = false; onDelete() }
+        )
+    }
     Surface(
         color = JulesSurface,
         shape = RoundedCornerShape(16.dp),
@@ -1338,6 +1346,7 @@ fun SessionSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -1379,7 +1388,7 @@ fun SessionSummaryCard(
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onPinToggle, modifier = Modifier.size(28.dp)) {
+                    IconButton(onClick = onPinToggle) {
                         Icon(
                             imageVector = if (session.isPinned) Icons.Default.PushPin else Icons.Default.PinInvoke,
                             contentDescription = "상단 고정",
@@ -1387,7 +1396,7 @@ fun SessionSummaryCard(
                             modifier = Modifier.size(16.dp)
                         )
                     }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                    IconButton(onClick = { confirmDelete = true }) {
                         Icon(
                             imageVector = Icons.Default.DeleteOutline,
                             contentDescription = "삭제",
@@ -1486,6 +1495,19 @@ fun SessionSummaryCard(
                             }
                         }
                     }
+                }
+            }
+
+            // 지연 안내에서는 삭제 동작을 아이콘이나 가로 스크롤 뒤에 숨기지 않습니다.
+            if (isStalled) {
+                OutlinedButton(
+                    onClick = { confirmDelete = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Icon(Icons.Default.DeleteOutline, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.session_delete_action))
                 }
             }
 
@@ -1599,6 +1621,29 @@ fun SessionSummaryCard(
             }
         }
     }
+}
+
+/** 목록과 상세 화면에서 삭제 대상 및 복구 불가 안내를 동일하게 표시합니다. */
+@Composable
+fun DeleteSessionDialog(title: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    // Dialog는 별도 Android 창을 사용하므로 앱 언어의 문자열을 창 생성 전에 확정합니다.
+    val dialogTitle = stringResource(R.string.session_delete_title)
+    val warning = stringResource(R.string.session_delete_warning, title)
+    val deleteLabel = stringResource(R.string.session_delete_action)
+    val cancelLabel = stringResource(R.string.dialog_cancel)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(dialogTitle) },
+        text = { Text(warning) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(deleteLabel, color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(cancelLabel) }
+        }
+    )
 }
 
 /**
