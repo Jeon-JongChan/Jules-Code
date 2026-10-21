@@ -176,5 +176,20 @@
     <string name="model_36_flash_desc">초고속 코드 패치, 단위 테스트 생성 및 빠른 반복 작업</string>
     <string name="detail_plan_steps_format">실행 계획 (%1$d단계)</string>
     <string name="detail_failed_reason">세션 실패 사유: %1$s</string>
+
+    <!-- Per-API-Key Usage & Stalled Session Diagnostics -->
+    <string name="quota_banner_key_title">%1$s • 작업 소모량 (24h)</string>
+    <string name="quota_used_format">24h 소모: %1$d/%2$d회 (잔여 %3$d)</string>
+    <string name="quota_slots_used_format">동시 실행: %1$d/%2$d개 (여유 %3$d)</string>
+    <string name="key_usage_stats_format">24h 소모: %1$d/%2$d회 • 동시 실행: %3$d/%4$d개 • 누적: %5$d건 (완료 %6$d)</string>
+    <string name="key_stalled_warning_format">⚠ 응답 지연/멈춤 의심 세션 %1$d건</string>
+    <string name="badge_stalled_short">⚠ 응답지연 (%1$s)</string>
+    <string name="badge_unanswered_short">미응답 %1$d건</string>
+    <string name="stalled_step_label">머물러 있는 단계: %1$s (완료 %2$d/%3$d)</string>
+    <string name="stalled_last_event_label">마지막 활동: %1$s (%2$s째 무응답 • 미응답 요청 %3$d건)</string>
+    <string name="btn_nudge_agent">깨우기 (재촉 전송)</string>
+    <string name="btn_recreate_session">동일 프롬프트로 새 세션 재시작</string>
+    <string name="btn_open_web_console">Jules 웹 콘솔 열기</string>
+    <string name="filter_stalled">응답 지연 (%1$d)</string>
 </resources>
 

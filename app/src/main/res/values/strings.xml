@@ -176,4 +176,19 @@
     <string name="model_36_flash_desc">Ultra-fast code patching, unit test generation &amp; rapid iteration</string>
     <string name="detail_plan_steps_format">Execution Plan (%1$d steps)</string>
     <string name="detail_failed_reason">Session failed: %1$s</string>
+
+    <!-- Per-API-Key Usage & Stalled Session Diagnostics -->
+    <string name="quota_banner_key_title">%1$s • Quota (24h)</string>
+    <string name="quota_used_format">Used 24h: %1$d/%2$d (Left %3$d)</string>
+    <string name="quota_slots_used_format">Active: %1$d/%2$d (Free %3$d)</string>
+    <string name="key_usage_stats_format">24h Used: %1$d/%2$d • Active: %3$d/%4$d • Total: %5$d (Done %6$d)</string>
+    <string name="key_stalled_warning_format">⚠ %1$d session(s) stalled / unresponsive</string>
+    <string name="badge_stalled_short">⚠ Stalled (%1$s)</string>
+    <string name="badge_unanswered_short">Unanswered %1$d</string>
+    <string name="stalled_step_label">Current Step: %1$s (%2$d/%3$d done)</string>
+    <string name="stalled_last_event_label">Last Activity: %1$s (%2$s silent • %3$d unanswered)</string>
+    <string name="btn_nudge_agent">Wake / Nudge Agent</string>
+    <string name="btn_recreate_session">Restart in New VM</string>
+    <string name="btn_open_web_console">Open Web Console</string>
+    <string name="filter_stalled">Stalled (%1$d)</string>
 </resources>

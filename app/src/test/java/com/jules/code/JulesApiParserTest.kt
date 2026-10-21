@@ -1,7 +1,13 @@
 package com.jules.code
 
+import com.jules.code.data.local.ApiKeyEntity
 import com.jules.code.data.local.CachedSessionEntity
+import com.jules.code.data.model.ExecutionPlan
 import com.jules.code.data.model.JulesSession
+import com.jules.code.data.model.MessageEvent
+import com.jules.code.data.model.PlanApprovedEvent
+import com.jules.code.data.model.PlanGeneratedEvent
+import com.jules.code.data.model.PlanStep
 import com.jules.code.data.remote.JulesApiClient
 import com.jules.code.ui.JulesLocaleManager
 import com.jules.code.ui.JulesViewModel
@@ -262,6 +268,125 @@ class JulesApiParserTest {
 
         val tBlank = parseActivityTimestamp("")
         assertEquals(0L, tBlank)
+    }
+
+    @Test
+    fun computeApiKeyUsage_separatesQuotaAndCountsPerApiKey() {
+        val now = parseActivityTimestamp("2026-10-21T15:30:00Z")
+        val key1 = ApiKeyEntity(id = 1L, label = "Key A", apiKey = "AQ.Key1", isActive = true, planTier = "FREE")
+        val key2 = ApiKeyEntity(id = 2L, label = "Key B", apiKey = "AQ.Key2", isActive = false, planTier = "PRO")
+
+        val key1Sessions = listOf(
+            CachedSessionEntity(
+                sessionId = "16342394822067107898",
+                name = "sessions/16342394822067107898",
+                title = "EquipNav",
+                prompt = "Build EquipNav",
+                state = "IN_PROGRESS",
+                repoDisplay = "sys03-met/GIS-Device-Navigator",
+                branchDisplay = "main",
+                prUrl = "",
+                prTitle = "",
+                createTime = "2026-10-21T11:17:18Z",
+                updateTime = "2026-10-21T15:28:00Z",
+                apiKeyId = 1L,
+                lastActivityTime = "2026-10-21T13:20:05Z",
+                lastOriginator = "user",
+                unansweredUserCount = 2,
+                currentStepTitle = "Monorepo 워크스페이스 및 프로젝트 기본 구조 생성",
+                completedStepsCount = 0,
+                totalStepsCount = 10
+            )
+        )
+        val key2Sessions = listOf(
+            CachedSessionEntity(
+                sessionId = "s-201",
+                name = "sessions/s-201",
+                title = "Done task",
+                prompt = "P",
+                state = "COMPLETED",
+                repoDisplay = "owner/repo",
+                branchDisplay = "main",
+                prUrl = "https://github.com/owner/repo/pull/1",
+                prTitle = "PR 1",
+                createTime = "2026-10-21T14:00:00Z",
+                updateTime = "2026-10-21T14:20:00Z",
+                apiKeyId = 2L,
+                lastActivityTime = "2026-10-21T14:20:00Z",
+                lastOriginator = "agent"
+            )
+        )
+
+        val usage1 = JulesViewModel.computeApiKeyUsage(key1, key1Sessions, nowMillis = now)
+        assertEquals(1, usage1.used24h)
+        assertEquals(14, usage1.remainingDaily)
+        assertEquals(1, usage1.concurrentUsed)
+        assertEquals(2, usage1.remainingConcurrent)
+        assertEquals(1, usage1.stalledCount)
+
+        val usage2 = JulesViewModel.computeApiKeyUsage(key2, key2Sessions, nowMillis = now)
+        assertEquals(1, usage2.used24h)
+        assertEquals(99, usage2.remainingDaily)
+        assertEquals(0, usage2.concurrentUsed)
+        assertEquals(1, usage2.completedCount)
+        assertEquals(0, usage2.stalledCount)
+    }
+
+    @Test
+    fun diagnoseSessionHealth_detectsStalledAfterPlanApprovalWithUnansweredUserMessages() {
+        val now = parseActivityTimestamp("2026-10-21T15:30:00Z")
+        val session = JulesSession(
+            name = "sessions/16342394822067107898",
+            id = "16342394822067107898",
+            title = "EquipNav",
+            state = "IN_PROGRESS",
+            createTime = "2026-10-21T11:17:18.687508523Z",
+            updateTime = "2026-10-21T15:29:59.000000Z" // API가 GET할 때마다 updateTime을 현재 시각으로 갱신하더라도 속지 않아야 함
+        )
+        val activities = listOf(
+            JulesActivity(
+                id = "5ec71fe5a85d44d7bbbe9543c051ebac",
+                originator = "agent",
+                createTime = "2026-10-21T11:22:50.274050Z",
+                planGenerated = PlanGeneratedEvent(
+                    plan = ExecutionPlan(
+                        id = "ec2085b669ca417cb8dbecc06af243e6",
+                        steps = listOf(
+                            PlanStep(id = "s1", index = 0, title = "Monorepo 워크스페이스 및 프로젝트 기본 구조 생성", state = "PENDING"),
+                            PlanStep(id = "s2", index = 1, title = "공통 API 타입 계약 정의", state = "PENDING")
+                        )
+                    )
+                )
+            ),
+            JulesActivity(
+                id = "b4f3d8582add45f696496252bbb7f044",
+                originator = "user",
+                createTime = "2026-10-21T11:22:51.727692Z",
+                planApproved = PlanApprovedEvent(planId = "ec2085b669ca417cb8dbecc06af243e6")
+            ),
+            JulesActivity(
+                id = "u1",
+                originator = "user",
+                createTime = "2026-10-21T11:39:15.704948066Z",
+                userMessaged = MessageEvent(userMessage = "진행해")
+            ),
+            JulesActivity(
+                id = "u2",
+                originator = "user",
+                createTime = "2026-10-21T13:20:05.767061435Z",
+                userMessaged = MessageEvent(userMessage = "실행계획 실행하라고")
+            )
+        )
+
+        val diag = JulesViewModel.diagnoseSessionHealth(session, activities, nowMillis = now)
+        assertTrue(diag.isStalled)
+        assertEquals(2, diag.unansweredUserCount)
+        assertEquals("Monorepo 워크스페이스 및 프로젝트 기본 구조 생성", diag.currentStepTitle)
+        assertEquals(0, diag.completedStepsCount)
+        assertEquals(2, diag.totalStepsCount)
+        assertTrue(diag.silentDurationMinutes >= 240L)
+        assertTrue(diag.reasonTitleKo.contains("실행 계획 승인 후 클라우드 VM 응답 멈춤"))
+        assertTrue(diag.reasonDetailKo.contains("보낸 메시지 2건"))
     }
 }
 

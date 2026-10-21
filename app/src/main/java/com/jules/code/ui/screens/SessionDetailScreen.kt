@@ -68,8 +68,17 @@ fun SessionDetailScreen(
     val context = LocalContext.current
     val session by viewModel.selectedSessionDetail.collectAsState()
     val activities by viewModel.activities.collectAsState()
+    val prefs by viewModel.preferences.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isAwaitingResponse by viewModel.isAwaitingResponse.collectAsState()
+
+    val isKo = remember(prefs) {
+        val lang = prefs["app_language"] ?: "SYSTEM"
+        !lang.equals("en", ignoreCase = true)
+    }
+    val healthDiagnostic = remember(session, activities) {
+        JulesViewModel.diagnoseSessionHealth(session, activities)
+    }
 
     var activeTab by remember { mutableIntStateOf(0) } // 0: 타임라인, 1: 계획(Plan), 2: 코드 Diff, 3: 터미널(Bash)
     var messageInput by remember { mutableStateOf("") }
@@ -329,8 +338,106 @@ fun SessionDetailScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
         ) {
-            // 상단 액션 콜아웃 배너 (계획 승인 대기 중이거나 PR이 생성된 경우)
+            // 상단 액션 콜아웃 배너 (계획 승인 대기 중이거나, 무응답/스턱(Stalled) 감지 시, 또는 PR이 생성된 경우)
             session?.let { curSession ->
+                if (healthDiagnostic.isStalled) {
+                    Surface(
+                        color = JulesWarning.copy(alpha = 0.14f),
+                        border = BorderStroke(1.dp, JulesWarning.copy(alpha = 0.55f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WarningAmber,
+                                    contentDescription = null,
+                                    tint = JulesWarning,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = if (isKo) healthDiagnostic.reasonTitleKo else healthDiagnostic.reasonTitleEn,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = JulesWarning,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Text(
+                                text = if (isKo) healthDiagnostic.reasonDetailKo else healthDiagnostic.reasonDetailEn,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = JulesTextPrimary,
+                                lineHeight = 18.sp
+                            )
+                            if (healthDiagnostic.currentStepTitle.isNotBlank()) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.stalled_step_label,
+                                        healthDiagnostic.currentStepTitle,
+                                        healthDiagnostic.completedStepsCount,
+                                        healthDiagnostic.totalStepsCount.coerceAtLeast(1)
+                                    ),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                    color = JulesSecondary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Button(
+                                    onClick = { viewModel.nudgeStalledSession(curSession.sessionId) },
+                                    enabled = !isLoading && !isAwaitingResponse,
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = JulesWarning, contentColor = Color.Black),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.Default.NotificationsActive, contentDescription = null, modifier = Modifier.size(15.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(stringResource(R.string.btn_nudge_agent), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        viewModel.recreateStalledSession(curSession)
+                                    },
+                                    enabled = !isLoading,
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, JulesPrimary),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.Default.Replay, contentDescription = null, tint = JulesPrimary, modifier = Modifier.size(15.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(stringResource(R.string.btn_recreate_session), fontSize = 11.sp, color = JulesPrimary, fontWeight = FontWeight.Bold)
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        val webUrl = curSession.url.ifBlank { "https://jules.google.com/session/${curSession.sessionId}" }
+                                        JulesBrowserUtils.openUrlInDefaultBrowser(context, webUrl)
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, JulesBorderBright),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = JulesSecondary, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(stringResource(R.string.btn_open_web_console), fontSize = 11.sp, color = JulesSecondary)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if (curSession.state.equals("AWAITING_PLAN_APPROVAL", ignoreCase = true)) {
                     Surface(
                         color = JulesWarning.copy(alpha = 0.14f),

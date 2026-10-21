@@ -15,8 +15,8 @@ android {
         minSdk = 26
         // ponytail: Android 14/15 기기에서 사이드로딩 시 targetSdk 35 제한 및 Play Protect 경고를 피하기 위해 targetSdk 34 설정 (compileSdk 35 유지)
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
         base.archivesName.set("Jules Code")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -111,9 +111,10 @@ android {
     }
 
     applicationVariants.all {
+        val vName = versionName ?: "1.2.0"
         outputs.all {
             (this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl)?.outputFileName =
-                if (buildType.name == "release") "Jules Code.apk" else "Jules Code-${buildType.name}.apk"
+                if (buildType.name == "release") "Jules Code-v${vName}.apk" else "Jules Code-v${vName}-${buildType.name}.apk"
         }
     }
 }

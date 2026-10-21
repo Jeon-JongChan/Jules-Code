@@ -49,14 +49,19 @@ fun SessionsListScreen(
     val sessions by viewModel.sessions.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     var stateFilter by remember { mutableStateOf("ALL") }
+    val nowMillis = System.currentTimeMillis()
+    val stalledCount = remember(sessions, nowMillis) {
+        sessions.count { JulesViewModel.isCachedSessionStalled(it, nowMillis) }
+    }
 
-    val filtered = remember(sessions, searchQuery, stateFilter) {
+    val filtered = remember(sessions, searchQuery, stateFilter, nowMillis) {
         sessions.filter { s ->
             val matchesQuery = searchQuery.isBlank() ||
                 s.title.contains(searchQuery, ignoreCase = true) ||
                 s.prompt.contains(searchQuery, ignoreCase = true) ||
                 s.repoDisplay.contains(searchQuery, ignoreCase = true)
             val matchesState = when (stateFilter) {
+                "STALLED" -> JulesViewModel.isCachedSessionStalled(s, nowMillis)
                 "ACTIVE" -> s.state.uppercase() in listOf("QUEUED", "PLANNING", "IN_PROGRESS")
                 "APPROVAL" -> s.state.uppercase() in listOf("AWAITING_PLAN_APPROVAL", "AWAITING_USER_FEEDBACK")
                 "COMPLETED" -> s.state.equals("COMPLETED", ignoreCase = true)
@@ -108,6 +113,7 @@ fun SessionsListScreen(
             ) {
                 listOf(
                     "ALL" to stringResource(R.string.filter_all, sessions.size),
+                    "STALLED" to stringResource(R.string.filter_stalled, stalledCount),
                     "ACTIVE" to stringResource(R.string.filter_active),
                     "APPROVAL" to stringResource(R.string.filter_approval),
                     "COMPLETED" to stringResource(R.string.filter_completed),
@@ -135,7 +141,8 @@ fun SessionsListScreen(
                     session = session,
                     onClick = { onOpenSession(session.sessionId) },
                     onPinToggle = { viewModel.togglePinSession(session.sessionId, session.isPinned) },
-                    onDelete = { viewModel.deleteSession(session.sessionId) }
+                    onDelete = { viewModel.deleteSession(session.sessionId) },
+                    onNudge = { viewModel.nudgeStalledSession(session.sessionId) }
                 )
             }
         }
@@ -497,6 +504,8 @@ private fun SourceItemCard(
 fun SettingsScreen(viewModel: JulesViewModel) {
     val context = LocalContext.current
     val apiKeys by viewModel.apiKeys.collectAsState()
+    val activeKey by viewModel.activeApiKey.collectAsState()
+    val apiKeyUsages by viewModel.apiKeyUsages.collectAsState()
     val sessions by viewModel.sessions.collectAsState()
     val prefs by viewModel.preferences.collectAsState()
 
@@ -508,7 +517,8 @@ fun SettingsScreen(viewModel: JulesViewModel) {
     val selectedLangCode = prefs["app_language"] ?: "SYSTEM"
     val selectedModelCode = prefs["selected_jules_model"] ?: "GEMINI_3_1_PRO"
     val notifyOnDone = (prefs["notify_on_session_event"] ?: "true") == "true"
-    val selectedTierCode = prefs["jules_plan_tier"] ?: "FREE"
+    val selectedTierCode = activeKey?.planTier?.ifBlank { prefs["jules_plan_tier"] ?: "FREE" }
+        ?: prefs["jules_plan_tier"] ?: "FREE"
     val currentTier = remember(selectedTierCode) { JulesViewModel.getTierLimits(selectedTierCode) }
     val used24h = remember(sessions) { JulesViewModel.countRolling24hSessions(sessions) }
     val remainingDaily = (currentTier.dailyLimit - used24h).coerceAtLeast(0)
@@ -919,64 +929,141 @@ fun SettingsScreen(viewModel: JulesViewModel) {
                     )
 
                     apiKeys.forEach { item ->
+                        val usage = apiKeyUsages[item.id]
+                        val itemTier = usage?.tier ?: JulesViewModel.getTierLimits(item.planTier)
+                        val itemUsed24h = usage?.used24h ?: 0
+                        val itemConcurrent = usage?.concurrentUsed ?: 0
+                        val itemTotal = usage?.totalSessions ?: 0
+                        val itemDone = usage?.completedCount ?: 0
+                        val itemStalled = usage?.stalledCount ?: 0
+                        val dailyRatio = (itemUsed24h.toFloat() / itemTier.dailyLimit.coerceAtLeast(1)).coerceIn(0f, 1f)
+
                         Surface(
                             color = if (item.isActive) JulesBrandPurple.copy(alpha = 0.14f) else JulesSurfaceElevated,
                             shape = RoundedCornerShape(12.dp),
                             border = BorderStroke(1.dp, if (item.isActive) JulesBrandPurple else JulesBorder),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(
-                                            text = item.label,
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        if (item.isActive) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                text = item.label,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            if (item.isActive) {
+                                                Surface(
+                                                    color = JulesSuccess.copy(alpha = 0.2f),
+                                                    shape = RoundedCornerShape(4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "ACTIVE",
+                                                        fontFamily = FontFamily.Monospace,
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = JulesSuccess,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                                    )
+                                                }
+                                            }
+                                            // 키별 요금제 티어 순환 선택 배지 (클릭 시 FREE -> PRO -> ULTRA 전환)
                                             Surface(
-                                                color = JulesSuccess.copy(alpha = 0.2f),
-                                                shape = RoundedCornerShape(4.dp)
+                                                color = JulesBrandPurple.copy(alpha = 0.22f),
+                                                shape = RoundedCornerShape(4.dp),
+                                                border = BorderStroke(1.dp, JulesBrandPurple.copy(alpha = 0.5f)),
+                                                modifier = Modifier.clickable {
+                                                    val next = when (itemTier.code) {
+                                                        "FREE" -> "PRO"
+                                                        "PRO" -> "ULTRA"
+                                                        else -> "FREE"
+                                                    }
+                                                    viewModel.updateApiKeyTier(item.id, next)
+                                                }
                                             ) {
                                                 Text(
-                                                    text = "ACTIVE",
+                                                    text = itemTier.code,
                                                     fontFamily = FontFamily.Monospace,
                                                     fontSize = 10.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = JulesSuccess,
+                                                    color = JulesPrimary,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                                                 )
                                             }
                                         }
+                                        val masked = if (item.apiKey.length > 8) {
+                                            "${item.apiKey.take(4)}••••••••${item.apiKey.takeLast(4)}"
+                                        } else "••••••••"
+                                        Text(
+                                            text = masked,
+                                            fontFamily = FontFamily.Monospace,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = JulesTextMuted
+                                        )
                                     }
-                                    val masked = if (item.apiKey.length > 8) {
-                                        "${item.apiKey.take(4)}••••••••${item.apiKey.takeLast(4)}"
-                                    } else "••••••••"
-                                    Text(
-                                        text = masked,
-                                        fontFamily = FontFamily.Monospace,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = JulesTextMuted
-                                    )
-                                }
 
-                                Row {
-                                    if (!item.isActive) {
-                                        TextButton(onClick = { viewModel.switchApiKey(item.id) }) {
-                                            Text(stringResource(R.string.settings_switch_btn))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (!item.isActive) {
+                                            TextButton(onClick = { viewModel.switchApiKey(item.id) }) {
+                                                Text(stringResource(R.string.settings_switch_btn))
+                                            }
+                                        }
+                                        IconButton(onClick = { viewModel.deleteApiKey(item.id) }) {
+                                            Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = JulesTextMuted)
                                         }
                                     }
-                                    IconButton(onClick = { viewModel.deleteApiKey(item.id) }) {
-                                        Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = JulesTextMuted)
+                                }
+
+                                // API 키별 실시간 작업 소모량(24h 소모/한도, 동시 실행 슬롯, 누적/완료 세션) 표시 바
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    LinearProgressIndicator(
+                                        progress = { dailyRatio },
+                                        color = if (dailyRatio > 0.8f) JulesDanger else if (dailyRatio > 0.5f) JulesWarning else JulesSuccess,
+                                        trackColor = JulesBackground,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(4.dp)
+                                            .clip(RoundedCornerShape(2.dp))
+                                    )
+                                    Text(
+                                        text = stringResource(
+                                            R.string.key_usage_stats_format,
+                                            itemUsed24h,
+                                            itemTier.dailyLimit,
+                                            itemConcurrent,
+                                            itemTier.concurrentLimit,
+                                            itemTotal,
+                                            itemDone
+                                        ),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        color = JulesTextPrimary,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (itemStalled > 0) {
+                                        Text(
+                                            text = stringResource(R.string.key_stalled_warning_format, itemStalled),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = JulesWarning
+                                        )
                                     }
                                 }
                             }

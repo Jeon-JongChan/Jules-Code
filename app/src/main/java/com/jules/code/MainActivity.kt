@@ -67,8 +67,8 @@ fun JulesMobileApp(
     var currentTab by remember { mutableIntStateOf(0) } // 0: 대시보드, 1: 세션, 2: 저장소(Sources), 3: 설정
     var openedSessionId by remember { mutableStateOf(initialSessionId) }
 
-    val currentTier = remember(prefs) {
-        JulesViewModel.getTierLimits(prefs["jules_plan_tier"])
+    val currentTier = remember(activeKey, prefs) {
+        JulesViewModel.getTierLimits(activeKey?.planTier?.ifBlank { prefs["jules_plan_tier"] } ?: prefs["jules_plan_tier"])
     }
     val used24h = remember(sessions) {
         JulesViewModel.countRolling24hSessions(sessions)
