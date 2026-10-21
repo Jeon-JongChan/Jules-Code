@@ -442,25 +442,11 @@ fun DashboardScreen(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Icon(
-                                        imageVector = if (selectedSource?.isCustom == true) Icons.Default.FolderShared else Icons.Default.FolderSpecial,
+                                        imageVector = Icons.Default.FolderSpecial,
                                         contentDescription = null,
-                                        tint = if (selectedSource?.isCustom == true) JulesPrimary else JulesSecondary,
+                                        tint = JulesSecondary,
                                         modifier = Modifier.size(15.dp)
                                     )
-                                    if (selectedSource?.isCustom == true) {
-                                        Surface(
-                                            color = JulesBrandPurple.copy(alpha = 0.2f),
-                                            shape = RoundedCornerShape(4.dp)
-                                        ) {
-                                            Text(
-                                                text = "외부",
-                                                fontFamily = FontFamily.Monospace,
-                                                fontSize = 10.sp,
-                                                color = JulesPrimary,
-                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                            )
-                                        }
-                                    }
                                     Text(
                                         text = selectedSource?.let { "${it.owner}/${it.repo}" } ?: "Repoless (Cloud VM)",
                                         fontFamily = FontFamily.Monospace,
@@ -491,32 +477,11 @@ fun DashboardScreen(
                                 sources.forEach { src ->
                                     DropdownMenuItem(
                                         text = {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                            ) {
-                                                if (src.isCustom) {
-                                                    Surface(
-                                                        color = JulesBrandPurple.copy(alpha = 0.18f),
-                                                        shape = RoundedCornerShape(4.dp),
-                                                        border = BorderStroke(1.dp, JulesBrandPurple.copy(alpha = 0.4f))
-                                                    ) {
-                                                        Text(
-                                                            text = "외부",
-                                                            fontFamily = FontFamily.Monospace,
-                                                            fontSize = 10.sp,
-                                                            color = JulesPrimary,
-                                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                                        )
-                                                    }
-                                                }
-                                                Text(
-                                                    text = "${src.owner}/${src.repo}",
-                                                    fontFamily = FontFamily.Monospace,
-                                                    fontSize = 13.sp,
-                                                    fontWeight = if (src.isCustom) FontWeight.Bold else FontWeight.Normal
-                                                )
-                                            }
+                                            Text(
+                                                text = "${src.owner}/${src.repo}",
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 13.sp
+                                            )
                                         },
                                         onClick = {
                                             selectedSourceName = src.name

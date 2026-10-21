@@ -153,8 +153,6 @@ fun SourcesScreen(viewModel: JulesViewModel) {
     val prefs by viewModel.preferences.collectAsState()
     var filterText by remember { mutableStateOf("") }
     var configTargetSource by remember { mutableStateOf<CachedSourceEntity?>(null) }
-    var showAddCustomDialog by remember { mutableStateOf(false) }
-    var sourceToDelete by remember { mutableStateOf<CachedSourceEntity?>(null) }
 
     val filteredSources = remember(sources, filterText) {
         sources.filter {
@@ -162,166 +160,6 @@ fun SourcesScreen(viewModel: JulesViewModel) {
                 it.owner.contains(filterText, ignoreCase = true) ||
                 it.repo.contains(filterText, ignoreCase = true)
         }
-    }
-
-    // 다른 아이디의 외부 GitHub 저장소 직접 등록 다이얼로그
-    if (showAddCustomDialog) {
-        var ownerInput by remember { mutableStateOf("") }
-        var repoInput by remember { mutableStateOf("") }
-        var branchInput by remember { mutableStateOf("main") }
-        var isPrivate by remember { mutableStateOf(false) }
-        var inputError by remember { mutableStateOf<String?>(null) }
-
-        AlertDialog(
-            onDismissRequest = { showAddCustomDialog = false },
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(Icons.Default.AddBox, contentDescription = null, tint = JulesBrandPurple)
-                    Text(
-                        text = "외부 GitHub 저장소 추가",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "다른 GitHub 계정 또는 조직의 저장소를 직접 등록하여 코딩 세션 작업에 활용할 수 있습니다.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = JulesTextMuted
-                    )
-
-                    OutlinedTextField(
-                        value = ownerInput,
-                        onValueChange = {
-                            ownerInput = it
-                            inputError = null
-                        },
-                        label = { Text("소유자 (GitHub ID / 조직명)") },
-                        placeholder = { Text("예: torvalds, google") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value = repoInput,
-                        onValueChange = {
-                            repoInput = it
-                            inputError = null
-                        },
-                        label = { Text("저장소 이름 (Repository)") },
-                        placeholder = { Text("예: linux, flutter") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value = branchInput,
-                        onValueChange = { branchInput = it },
-                        label = { Text("기본 브랜치 (Default Branch)") },
-                        placeholder = { Text("main") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "비공개(Private) 저장소",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Switch(
-                            checked = isPrivate,
-                            onCheckedChange = { isPrivate = it }
-                        )
-                    }
-
-                    inputError?.let { err ->
-                        Text(
-                            text = err,
-                            color = JulesDanger,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val success = viewModel.addCustomSource(
-                            ownerInput = ownerInput,
-                            repoInput = repoInput,
-                            defaultBranch = branchInput,
-                            isPrivate = isPrivate
-                        )
-                        if (success) {
-                            showAddCustomDialog = false
-                        } else {
-                            inputError = "소유자(ID)와 저장소 이름을 모두 입력해주세요."
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = JulesBrandPurple, contentColor = Color.White)
-                ) {
-                    Text("저장소 추가", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddCustomDialog = false }) {
-                    Text(stringResource(R.string.dialog_cancel))
-                }
-            },
-            containerColor = JulesSurfaceElevated
-        )
-    }
-
-    // 커스텀 외부 저장소 삭제 확인 다이얼로그
-    sourceToDelete?.let { target ->
-        AlertDialog(
-            onDismissRequest = { sourceToDelete = null },
-            title = {
-                Text(
-                    text = "저장소 삭제 확인",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(
-                    text = "${target.owner}/${target.repo} 외부 저장소를 목록에서 삭제하시겠습니까?",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.deleteCustomSource(target.name)
-                        sourceToDelete = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = JulesDanger, contentColor = Color.White)
-                ) {
-                    Text("삭제", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { sourceToDelete = null }) {
-                    Text(stringResource(R.string.dialog_cancel))
-                }
-            },
-            containerColor = JulesSurfaceElevated
-        )
     }
 
     // 저장소별 Environment Setup Script / Env Vars / Repository Memory 설정 다이얼로그 (Jules 웹 Repo Configuration 대응)
@@ -439,47 +277,22 @@ fun SourcesScreen(viewModel: JulesViewModel) {
                         }
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    OutlinedButton(
+                        onClick = {
+                            JulesBrowserUtils.openUrlInDefaultBrowser(context, "https://github.com/apps/google-labs-jules/installations/new")
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, JulesBorderBright),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                JulesBrowserUtils.openUrlInDefaultBrowser(context, "https://github.com/apps/google-labs-jules/installations/new")
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, JulesBorderBright),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.AddLink, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = stringResource(R.string.sources_github_btn),
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Button(
-                            onClick = { showAddCustomDialog = true },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = JulesBrandPurple,
-                                contentColor = Color.White
-                            ),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = "외부 저장소 추가",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                        Icon(Icons.Default.AddLink, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.sources_github_btn),
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -519,8 +332,7 @@ fun SourcesScreen(viewModel: JulesViewModel) {
                 SourceItemCard(
                     source = src,
                     hasConfiguredEnv = hasConfiguredEnv,
-                    onConfigureEnv = { configTargetSource = src },
-                    onDeleteCustom = if (src.isCustom) { { sourceToDelete = src } } else null
+                    onConfigureEnv = { configTargetSource = src }
                 )
             }
         }
@@ -531,8 +343,7 @@ fun SourcesScreen(viewModel: JulesViewModel) {
 private fun SourceItemCard(
     source: CachedSourceEntity,
     hasConfiguredEnv: Boolean,
-    onConfigureEnv: () -> Unit,
-    onDeleteCustom: (() -> Unit)? = null
+    onConfigureEnv: () -> Unit
 ) {
     val context = LocalContext.current
     val branches = remember(source.branchesCsv) {
@@ -542,7 +353,7 @@ private fun SourceItemCard(
     Surface(
         color = JulesSurface,
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, if (source.isCustom) JulesBrandPurple.copy(alpha = 0.5f) else JulesBorder),
+        border = BorderStroke(1.dp, JulesBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -560,34 +371,29 @@ private fun SourceItemCard(
                     modifier = Modifier.weight(1f)
                 ) {
                     Surface(
-                        color = (if (source.isCustom) JulesSecondary else JulesBrandPurple).copy(alpha = 0.16f),
+                        color = JulesBrandPurple.copy(alpha = 0.16f),
                         shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, (if (source.isCustom) JulesSecondary else JulesBrandPurple).copy(alpha = 0.4f)),
+                        border = BorderStroke(1.dp, JulesBrandPurple.copy(alpha = 0.4f)),
                         modifier = Modifier.size(38.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = if (source.isCustom) Icons.Default.FolderShared else Icons.Default.Storage,
+                                imageVector = Icons.Default.Storage,
                                 contentDescription = null,
-                                tint = if (source.isCustom) JulesSecondary else JulesPrimary,
+                                tint = JulesPrimary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
                     }
                     Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "${source.owner}/${source.repo}",
-                                fontFamily = FontFamily.Monospace,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                        Text(
+                            text = "${source.owner}/${source.repo}",
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         Text(
                             text = source.name,
                             fontFamily = FontFamily.Monospace,
@@ -598,38 +404,18 @@ private fun SourceItemCard(
                         )
                     }
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                Surface(
+                    color = (if (source.isPrivate) JulesWarning else JulesSuccess).copy(alpha = 0.16f),
+                    shape = RoundedCornerShape(6.dp),
+                    border = BorderStroke(1.dp, (if (source.isPrivate) JulesWarning else JulesSuccess).copy(alpha = 0.4f))
                 ) {
-                    if (source.isCustom) {
-                        Surface(
-                            color = JulesBrandPurple.copy(alpha = 0.18f),
-                            shape = RoundedCornerShape(6.dp),
-                            border = BorderStroke(1.dp, JulesBrandPurple.copy(alpha = 0.45f))
-                        ) {
-                            Text(
-                                text = "외부 저장소",
-                                fontFamily = FontFamily.Monospace,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = JulesPrimary,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
-                            )
-                        }
-                    }
-                    Surface(
-                        color = (if (source.isPrivate) JulesWarning else JulesSuccess).copy(alpha = 0.16f),
-                        shape = RoundedCornerShape(6.dp),
-                        border = BorderStroke(1.dp, (if (source.isPrivate) JulesWarning else JulesSuccess).copy(alpha = 0.4f))
-                    ) {
-                        Text(
-                            text = if (source.isPrivate) "Private" else "Public",
-                            fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (source.isPrivate) JulesWarning else JulesSuccess,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                        )
-                    }
+                    Text(
+                        text = if (source.isPrivate) "Private" else "Public",
+                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (source.isPrivate) JulesWarning else JulesSuccess,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
                 }
             }
 
@@ -689,33 +475,14 @@ private fun SourceItemCard(
                     )
                 }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                TextButton(
+                    onClick = {
+                        JulesBrowserUtils.openGitHubRepo(context, "${source.owner}/${source.repo}")
+                    }
                 ) {
-                    if (source.isCustom && onDeleteCustom != null) {
-                        IconButton(
-                            onClick = onDeleteCustom,
-                            modifier = Modifier.size(34.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.DeleteOutline,
-                                contentDescription = "저장소 삭제",
-                                tint = JulesDanger.copy(alpha = 0.85f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-
-                    TextButton(
-                        onClick = {
-                            JulesBrowserUtils.openGitHubRepo(context, "${source.owner}/${source.repo}")
-                        }
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(15.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.source_open_github), fontSize = 12.sp)
-                    }
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(stringResource(R.string.source_open_github), fontSize = 12.sp)
                 }
             }
         }

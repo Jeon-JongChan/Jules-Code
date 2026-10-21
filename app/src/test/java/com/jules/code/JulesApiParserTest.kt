@@ -1,7 +1,6 @@
 package com.jules.code
 
 import com.jules.code.data.local.CachedSessionEntity
-import com.jules.code.data.local.CachedSourceEntity
 import com.jules.code.data.model.JulesSession
 import com.jules.code.data.remote.JulesApiClient
 import com.jules.code.ui.JulesLocaleManager
@@ -11,12 +10,9 @@ import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import com.jules.code.data.model.JulesActivity
 import com.jules.code.data.model.sortActivitiesChronologically
 import com.jules.code.data.model.parseActivityTimestamp
-import com.jules.code.data.model.parseGitHubRepoInput
 import org.junit.Test
 
 /**
@@ -266,72 +262,6 @@ class JulesApiParserTest {
 
         val tBlank = parseActivityTimestamp("")
         assertEquals(0L, tBlank)
-    }
-
-    @Test
-    fun parseGitHubRepoInput_handlesOwnerAndRepoSeparately() {
-        val result = parseGitHubRepoInput("torvalds", "linux")
-        assertNotNull(result)
-        assertEquals("torvalds", result!!.first)
-        assertEquals("linux", result.second)
-
-        val resultWithSpaces = parseGitHubRepoInput("  google  ", "  flutter  ")
-        assertNotNull(resultWithSpaces)
-        assertEquals("google", resultWithSpaces!!.first)
-        assertEquals("flutter", resultWithSpaces.second)
-    }
-
-    @Test
-    fun parseGitHubRepoInput_handlesUrlAndSlashGracefully() {
-        // 소유자 필드에 전체 URL이 들어온 경우
-        val urlResult = parseGitHubRepoInput("https://github.com/facebook/react-native", "")
-        assertNotNull(urlResult)
-        assertEquals("facebook", urlResult!!.first)
-        assertEquals("react-native", urlResult.second)
-
-        // .git 확장자가 포함된 경우
-        val gitResult = parseGitHubRepoInput("https://github.com/JetBrains/kotlin.git", "")
-        assertNotNull(gitResult)
-        assertEquals("JetBrains", gitResult!!.first)
-        assertEquals("kotlin", gitResult.second)
-
-        // 슬래시 형식 "owner/repo"가 한 필드에 들어온 경우
-        val slashResult = parseGitHubRepoInput("facebook/react-native", "")
-        assertNotNull(slashResult)
-        assertEquals("facebook", slashResult!!.first)
-        assertEquals("react-native", slashResult.second)
-    }
-
-    @Test
-    fun parseGitHubRepoInput_rejectsEmptyOrBlankInput() {
-        assertNull(parseGitHubRepoInput("", ""))
-        assertNull(parseGitHubRepoInput("   ", "   "))
-        assertNull(parseGitHubRepoInput("onlyowner", ""))
-        assertNull(parseGitHubRepoInput("", "onlyrepo"))
-    }
-
-    @Test
-    fun cachedSourceEntity_isCustomFlag_worksCorrectly() {
-        val standardSource = CachedSourceEntity(
-            name = "sources/github/google/jules",
-            id = "github/google/jules",
-            owner = "google",
-            repo = "jules",
-            isPrivate = false,
-            defaultBranch = "main",
-            branchesCsv = "main"
-        )
-        assertFalse(standardSource.isCustom)
-
-        val customSource = standardSource.copy(
-            name = "sources/github/torvalds/linux",
-            id = "github/torvalds/linux",
-            owner = "torvalds",
-            repo = "linux",
-            isCustom = true
-        )
-        assertTrue(customSource.isCustom)
-        assertEquals("sources/github/torvalds/linux", customSource.name)
     }
 }
 

@@ -65,57 +65,6 @@ data class GitBranch(
 )
 
 /**
- * 사용자 입력으로부터 GitHub 소유자(Owner)와 저장소 이름(Repo)을 정제하고 검증합니다.
- * 'owner', 'repo' 개별 입력 필드뿐만 아니라 URL이나 복사된 슬래시 경로('owner/repo')도 유연하게 정제합니다.
- *
- * @param ownerInput 사용자가 입력한 소유자(사용자 ID 또는 조직명) 문자열
- * @param repoInput 사용자가 입력한 저장소 이름 문자열
- * @return 유효한 (Owner, Repo) 페어 또는 검증 실패 시 null
- */
-fun parseGitHubRepoInput(ownerInput: String, repoInput: String): Pair<String, String>? {
-    val rawOwner = ownerInput.trim().removeSuffix("/")
-    val rawRepo = repoInput.trim().removeSuffix("/").removeSuffix(".git")
-
-    // Case 1: owner 필드에 https://github.com/owner/repo 형식 전체가 들어온 경우
-    if (rawOwner.contains("github.com/")) {
-        val path = rawOwner.substringAfter("github.com/").trim('/')
-        val parts = path.split("/").filter { it.isNotBlank() }
-        if (parts.size >= 2) {
-            val owner = parts[0].trim()
-            val repo = parts[1].removeSuffix(".git").trim()
-            return if (owner.isNotBlank() && repo.isNotBlank()) owner to repo else null
-        }
-    }
-
-    // Case 2: owner 필드에 "owner/repo" 슬래시가 포함된 경우
-    if (rawOwner.contains("/")) {
-        val parts = rawOwner.split("/").filter { it.isNotBlank() }
-        if (parts.size >= 2) {
-            val owner = parts[0].trim()
-            val repo = if (rawRepo.isNotBlank()) rawRepo else parts[1].removeSuffix(".git").trim()
-            return if (owner.isNotBlank() && repo.isNotBlank()) owner to repo else null
-        }
-    }
-
-    // Case 3: repo 필드에 "owner/repo" 또는 전체 URL이 들어온 경우
-    if (rawRepo.contains("github.com/")) {
-        val path = rawRepo.substringAfter("github.com/").trim('/')
-        val parts = path.split("/").filter { it.isNotBlank() }
-        if (parts.size >= 2) {
-            val owner = parts[0].trim()
-            val repo = parts[1].removeSuffix(".git").trim()
-            return if (owner.isNotBlank() && repo.isNotBlank()) owner to repo else null
-        }
-    }
-
-    // Case 4: 정석대로 분리된 개별 입력
-    val cleanOwner = rawOwner.trim().trim('/')
-    val cleanRepo = rawRepo.trim().trim('/').removeSuffix(".git")
-    if (cleanOwner.isBlank() || cleanRepo.isBlank()) return null
-    return cleanOwner to cleanRepo
-}
-
-/**
  * Jules 세션 목록 응답 모델입니다.
  */
 @Serializable

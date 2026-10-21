@@ -201,11 +201,11 @@ class JulesViewModel(
                             repo = s.githubRepo?.repo ?: s.displayName.substringAfter("/", s.displayName),
                             isPrivate = s.githubRepo?.isPrivate ?: false,
                             defaultBranch = s.defaultBranchName,
-                            branchesCsv = s.availableBranches.joinToString(","),
-                            isCustom = false
+                            branchesCsv = s.availableBranches.joinToString(",")
                         )
                     }
-                    dao.syncRemoteSources(entities)
+                    dao.clearSources()
+                    dao.upsertSources(entities)
                 }
 
                 sessionsDeferred.await().onSuccess { resp ->
@@ -217,65 +217,6 @@ class JulesViewModel(
                 }
             }
             _isLoading.value = false
-        }
-    }
-
-    /**
-     * 사용자가 직접 입력한 외부 GitHub 소유자(owner) 및 저장소(repo) 정보를 로컬 Room DB에 영구 등록합니다.
-     * 원격 소스 동기화 시에도 삭제되지 않고 영구 보존됩니다.
-     *
-     * @param ownerInput 소유자(ID 또는 조직명) 문자열
-     * @param repoInput 저장소 이름 문자열
-     * @param defaultBranch 기본 브랜치 (기본값: "main")
-     * @param branchesCsv 쉼표로 구분된 추가 브랜치 목록
-     * @param isPrivate 비공개 저장소 여부 (기본값: false)
-     * @return 등록 성공 여부 (유효하지 않은 입력인 경우 false 반환)
-     */
-    fun addCustomSource(
-        ownerInput: String,
-        repoInput: String,
-        defaultBranch: String = "main",
-        branchesCsv: String = "",
-        isPrivate: Boolean = false
-    ): Boolean {
-        val parsed = parseGitHubRepoInput(ownerInput, repoInput)
-        if (parsed == null) {
-            showMessage("소유자(ID)와 저장소 이름을 올바르게 입력해주세요.")
-            return false
-        }
-        val (owner, repo) = parsed
-        val cleanBranch = defaultBranch.trim().ifBlank { "main" }
-        val branchList = if (branchesCsv.isBlank()) {
-            listOf(cleanBranch)
-        } else {
-            (listOf(cleanBranch) + branchesCsv.split(",").map { it.trim() }.filter { it.isNotBlank() }).distinct()
-        }
-        val entity = CachedSourceEntity(
-            name = "sources/github/$owner/$repo",
-            id = "github/$owner/$repo",
-            owner = owner,
-            repo = repo,
-            isPrivate = isPrivate,
-            defaultBranch = cleanBranch,
-            branchesCsv = branchList.joinToString(","),
-            isCustom = true
-        )
-        viewModelScope.launch {
-            dao.insertCustomSource(entity)
-            showMessage("외부 저장소 $owner/$repo 를 추가했습니다.")
-        }
-        return true
-    }
-
-    /**
-     * 사용자가 수동으로 등록했던 외부 GitHub 저장소를 로컬 Room DB에서 안전하게 삭제합니다.
-     *
-     * @param sourceName 삭제할 저장소의 고유 name 식별자 (예: "sources/github/owner/repo")
-     */
-    fun deleteCustomSource(sourceName: String) {
-        viewModelScope.launch {
-            dao.deleteCustomSource(sourceName)
-            showMessage("외부 저장소가 삭제되었습니다.")
         }
     }
 
@@ -867,18 +808,7 @@ class JulesViewModel(
                 repo = "jules-samples",
                 isPrivate = false,
                 defaultBranch = "main",
-                branchesCsv = "main,staging",
-                isCustom = false
-            ),
-            CachedSourceEntity(
-                name = "sources/github/torvalds/linux",
-                id = "github/torvalds/linux",
-                owner = "torvalds",
-                repo = "linux",
-                isPrivate = false,
-                defaultBranch = "master",
-                branchesCsv = "master",
-                isCustom = true
+                branchesCsv = "main,staging"
             )
         )
         dao.upsertSources(demoSources)
