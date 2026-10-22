@@ -2,6 +2,7 @@
 .docs
 .build/kotlin/
 .build/*.log
+.build/test/*.log
 .gradle/
 .kotlin
 build/

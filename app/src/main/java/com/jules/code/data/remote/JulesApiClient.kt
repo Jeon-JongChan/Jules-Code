@@ -2,14 +2,18 @@ package com.jules.code.data.remote
 
 import com.jules.code.data.model.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -18,6 +22,7 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import kotlin.coroutines.coroutineContext
 
 /**
  * Google Jules REST API (`https://jules.googleapis.com/v1alpha`) 통신을 담당하는 클라이언트입니다.
@@ -44,7 +49,7 @@ class JulesApiClient(
         pageSize: Int = 50,
         pageToken: String? = null,
         filter: String? = null
-    ): Result<SourcesResponse> = runCatching {
+    ): Result<SourcesResponse> = apiResult {
         val params = buildList {
             add("pageSize=$pageSize")
             if (!pageToken.isNullOrBlank()) add("pageToken=${encode(pageToken)}")
@@ -57,7 +62,7 @@ class JulesApiClient(
     /**
      * 특정 소스 상세 정보를 조회합니다. (`GET /v1alpha/{sourceName}`)
      */
-    suspend fun getSource(apiKey: String, sourceIdOrName: String): Result<JulesSource> = runCatching {
+    suspend fun getSource(apiKey: String, sourceIdOrName: String): Result<JulesSource> = apiResult {
         val path = if (sourceIdOrName.startsWith("sources/")) "/$sourceIdOrName" else "/sources/$sourceIdOrName"
         val raw = request("GET", path, apiKey)
         json.decodeFromString<JulesSource>(raw)
@@ -70,7 +75,7 @@ class JulesApiClient(
         apiKey: String,
         pageSize: Int = 50,
         pageToken: String? = null
-    ): Result<SessionsResponse> = runCatching {
+    ): Result<SessionsResponse> = apiResult {
         val params = buildList {
             add("pageSize=$pageSize")
             if (!pageToken.isNullOrBlank()) add("pageToken=${encode(pageToken)}")
@@ -82,7 +87,7 @@ class JulesApiClient(
     /**
      * 특정 코딩 세션의 최신 상태와 산출물(PR 등)을 조회합니다. (`GET /v1alpha/sessions/{sessionId}`)
      */
-    suspend fun getSession(apiKey: String, sessionId: String): Result<JulesSession> = runCatching {
+    suspend fun getSession(apiKey: String, sessionId: String): Result<JulesSession> = apiResult {
         val cleanId = sessionId.substringAfterLast("/")
         val raw = request("GET", "/sessions/$cleanId", apiKey)
         json.decodeFromString<JulesSession>(raw)
@@ -91,7 +96,7 @@ class JulesApiClient(
     /**
      * 새로운 코딩 세션을 생성합니다. (`POST /v1alpha/sessions`)
      */
-    suspend fun createSession(apiKey: String, req: CreateSessionRequest): Result<JulesSession> = runCatching {
+    suspend fun createSession(apiKey: String, req: CreateSessionRequest): Result<JulesSession> = apiResult {
         val body = json.encodeToString(req)
         val raw = request("POST", "/sessions", apiKey, body)
         json.decodeFromString<JulesSession>(raw)
@@ -100,7 +105,7 @@ class JulesApiClient(
     /**
      * 코딩 세션을 삭제합니다. (`DELETE /v1alpha/sessions/{sessionId}`)
      */
-    suspend fun deleteSession(apiKey: String, sessionId: String): Result<Unit> = runCatching {
+    suspend fun deleteSession(apiKey: String, sessionId: String): Result<Unit> = apiResult {
         val cleanId = sessionId.substringAfterLast("/")
         request("DELETE", "/sessions/$cleanId", apiKey)
     }
@@ -108,7 +113,7 @@ class JulesApiClient(
     /**
      * 대기 중인 실행 계획을 승인합니다. (`POST /v1alpha/sessions/{sessionId}:approvePlan`)
      */
-    suspend fun approvePlan(apiKey: String, sessionId: String): Result<Unit> = runCatching {
+    suspend fun approvePlan(apiKey: String, sessionId: String): Result<Unit> = apiResult {
         val cleanId = sessionId.substringAfterLast("/")
         request("POST", "/sessions/$cleanId:approvePlan", apiKey, "{}")
     }
@@ -116,7 +121,7 @@ class JulesApiClient(
     /**
      * 진행 중인 세션의 에이전트에게 후속 지시나 피드백 메시지를 전송합니다. (`POST /v1alpha/sessions/{sessionId}:sendMessage`)
      */
-    suspend fun sendMessage(apiKey: String, sessionId: String, prompt: String): Result<Unit> = runCatching {
+    suspend fun sendMessage(apiKey: String, sessionId: String, prompt: String): Result<Unit> = apiResult {
         val cleanId = sessionId.substringAfterLast("/")
         val body = json.encodeToString(SendMessageRequest(prompt = prompt))
         request("POST", "/sessions/$cleanId:sendMessage", apiKey, body)
@@ -131,7 +136,7 @@ class JulesApiClient(
         sessionId: String,
         pageSize: Int = 100,
         pageToken: String? = null
-    ): Result<ActivitiesResponse> = runCatching {
+    ): Result<ActivitiesResponse> = apiResult {
         val cleanId = sessionId.substringAfterLast("/")
         val params = buildList {
             add("pageSize=$pageSize")
@@ -142,13 +147,64 @@ class JulesApiClient(
         withContext(Dispatchers.Default) { parseActivitiesFlexible(raw) }
     }
 
+    /** 모든 세션 페이지를 가져와 이전 작업이 목록에서 누락되지 않게 합니다. */
+    suspend fun listAllSessions(apiKey: String): Result<List<JulesSession>> = collectPages { token ->
+        listSessions(apiKey, pageSize = 100, pageToken = token).getOrThrow().let {
+            it.sessions to it.nextPageToken
+        }
+    }
+
+    /** 연결된 저장소의 전체 페이지를 가져옵니다. */
+    suspend fun listAllSources(apiKey: String): Result<List<JulesSource>> = collectPages { token ->
+        listSources(apiKey, pageSize = 100, pageToken = token).getOrThrow().let {
+            it.sources to it.nextPageToken
+        }
+    }
+
+    /** 계획·최신 메시지·산출물이 잘리지 않도록 활동의 전체 페이지를 가져옵니다. */
+    suspend fun listAllActivities(apiKey: String, sessionId: String): Result<List<JulesActivity>> = collectPages { token ->
+        listActivities(apiKey, sessionId, pageToken = token).getOrThrow().let {
+            it.activities to it.nextPageToken
+        }
+    }
+
+    /** 활동 하나를 다시 조회하며 목록과 동일한 호환 파서를 사용합니다. */
+    suspend fun getActivity(apiKey: String, sessionId: String, activityId: String): Result<JulesActivity> = apiResult {
+        val raw = request("GET", "/sessions/${sessionId.substringAfterLast('/')}/activities/${activityId.substringAfterLast('/')}", apiKey)
+        parseSingleActivity(json.parseToJsonElement(raw).jsonObject)
+    }
+
+    /** 실패한 중간 페이지는 부분 성공으로 처리하지 않고 반복 토큰은 차단합니다. */
+    private suspend fun <T> collectPages(fetch: suspend (String?) -> Pair<List<T>, String?>): Result<List<T>> = apiResult {
+        val items = mutableListOf<T>()
+        val seenTokens = mutableSetOf<String>()
+        var token: String? = null
+        do {
+            coroutineContext.ensureActive()
+            val (page, next) = fetch(token)
+            items.addAll(page)
+            token = next?.takeIf { it.isNotBlank() }
+            check(token == null || seenTokens.add(token)) { "서버가 동일한 페이지 토큰을 반복했습니다." }
+        } while (token != null)
+        items
+    }
+
+    /** 네트워크 오류는 Result로 전달하되 코루틴 취소는 호출자에게 전파합니다. */
+    private suspend fun <T> apiResult(block: suspend () -> T): Result<T> = try {
+        Result.success(block())
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Result.failure(error)
+    }
+
     /**
      * JSON 응답에서 `gitPatch`가 문자열이든 객체이든 안전하게 파싱하여 `ActivitiesResponse`로 변환합니다.
      */
     fun parseActivitiesFlexible(rawJson: String): ActivitiesResponse {
         val root = json.parseToJsonElement(rawJson).jsonObject
-        val nextToken = root["nextPageToken"]?.jsonPrimitive?.content
-        val arr = root["activities"]?.jsonArray ?: JsonArray(emptyList())
+        val nextToken = root["nextPageToken"]?.jsonPrimitive?.contentOrNull
+        val arr = root["activities"] as? JsonArray ?: JsonArray(emptyList())
         val items = arr.map { elem -> parseSingleActivity(elem.jsonObject) }
         return ActivitiesResponse(activities = items, nextPageToken = nextToken)
     }
@@ -157,13 +213,14 @@ class JulesApiClient(
      * 단일 Activity JSON 객체를 `JulesActivity` 모델로 변환합니다.
      */
     private fun parseSingleActivity(obj: JsonObject): JulesActivity {
-        val artifactsElem = obj["artifacts"]?.jsonArray ?: JsonArray(emptyList())
+        val artifactsElem = obj["artifacts"] as? JsonArray ?: JsonArray(emptyList())
         val parsedArtifacts = artifactsElem.map { artElem ->
             val artObj = artElem.jsonObject
-            val changeSetObj = artObj["changeSet"]?.jsonObject
+            val changeSetObj = artObj["changeSet"] as? JsonObject
             val changeSet = changeSetObj?.let { cs ->
                 val gpElem: JsonElement? = cs["gitPatch"]
                 val gitPatchData = when (gpElem) {
+                    JsonNull -> null
                     is JsonPrimitive -> GitPatchData(
                         unidiffPatch = gpElem.content,
                         baseCommitId = cs["baseCommit"]?.jsonPrimitive?.content ?: "",
@@ -185,7 +242,7 @@ class JulesApiClient(
                     commitMessage = cs["commitMessage"]?.jsonPrimitive?.content ?: ""
                 )
             }
-            val bashObj = artObj["bashOutput"]?.jsonObject
+            val bashObj = artObj["bashOutput"] as? JsonObject
             val bashOutput = bashObj?.let { bo ->
                 BashOutputArtifact(
                     command = bo["command"]?.jsonPrimitive?.content ?: "",
@@ -193,7 +250,7 @@ class JulesApiClient(
                     exitCode = bo["exitCode"]?.jsonPrimitive?.intOrNull ?: 0
                 )
             }
-            val mediaObj = artObj["media"]?.jsonObject
+            val mediaObj = artObj["media"] as? JsonObject
             val media = mediaObj?.let { mo ->
                 MediaArtifact(
                     mimeType = mo["mimeType"]?.jsonPrimitive?.content ?: "",
@@ -270,6 +327,7 @@ class JulesApiClient(
         }
     }
 
+    /** 쿼리 값의 예약 문자와 공백을 인코딩합니다. */
     private fun encode(v: String): String = URLEncoder.encode(v, "UTF-8")
 }
 

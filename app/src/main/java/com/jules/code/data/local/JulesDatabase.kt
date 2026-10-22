@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 사용자의 API 키 프로필(최대 3개 또는 다중 프로필 전환 지원)을 저장하는 Room 엔티티입니다.
+ * 사용자의 API 키 프로필(다중 프로필 전환 및 키별 요금제 티어 관리 지원)을 저장하는 Room 엔티티입니다.
  */
 @Entity(tableName = "api_key_profiles")
 data class ApiKeyEntity(
@@ -15,11 +15,13 @@ data class ApiKeyEntity(
     val label: String,
     val apiKey: String,
     val isActive: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val planTier: String = "FREE"
 )
 
 /**
  * 오프라인 조회 및 빠른 렌더링을 위해 캐시하는 코딩 세션 Room 엔티티입니다.
+ * API 키별 작업 소모량 분리 집계(`apiKeyId`) 및 세션 무응답/스턱(Stalled) 진단을 위한 최신 액티비티 요약 메타데이터를 함께 보관합니다.
  */
 @Entity(tableName = "cached_sessions")
 data class CachedSessionEntity(
@@ -34,7 +36,14 @@ data class CachedSessionEntity(
     val prTitle: String,
     val createTime: String,
     val updateTime: String,
-    val isPinned: Boolean = false
+    val isPinned: Boolean = false,
+    val apiKeyId: Long = 0L,
+    val lastActivityTime: String = "",
+    val lastOriginator: String = "",
+    val unansweredUserCount: Int = 0,
+    val currentStepTitle: String = "",
+    val completedStepsCount: Int = 0,
+    val totalStepsCount: Int = 0
 )
 
 /**
@@ -101,6 +110,9 @@ interface JulesDao {
     @Query("SELECT * FROM api_key_profiles WHERE isActive = 1 LIMIT 1")
     suspend fun getActiveApiKey(): ApiKeyEntity?
 
+    @Query("SELECT * FROM api_key_profiles WHERE apiKey = :rawKey LIMIT 1")
+    suspend fun findApiKeyByValue(rawKey: String): ApiKeyEntity?
+
     @Query("UPDATE api_key_profiles SET isActive = 0")
     suspend fun clearActiveFlags()
 
@@ -110,19 +122,35 @@ interface JulesDao {
     @Query("UPDATE api_key_profiles SET isActive = 1 WHERE id = :id")
     suspend fun activateApiKey(id: Long)
 
+    @Query("UPDATE api_key_profiles SET planTier = :tierCode WHERE id = :id")
+    suspend fun updateApiKeyTier(id: Long, tierCode: String)
+
     @Query("DELETE FROM api_key_profiles WHERE id = :id")
     suspend fun deleteApiKey(id: Long)
 
     @Transaction
-    suspend fun saveAndActivateApiKey(label: String, apiKey: String) {
+    suspend fun saveAndActivateApiKey(label: String, apiKey: String, planTier: String = "FREE"): Long {
+        val trimmed = apiKey.trim()
         clearActiveFlags()
-        insertApiKey(
-            ApiKeyEntity(
-                label = label.ifBlank { "기본 API 키" },
-                apiKey = apiKey.trim(),
-                isActive = true
+        val existing = findApiKeyByValue(trimmed)
+        return if (existing != null) {
+            val updated = existing.copy(
+                label = label.ifBlank { existing.label },
+                isActive = true,
+                planTier = existing.planTier.ifBlank { planTier }
             )
-        )
+            insertApiKey(updated)
+            existing.id
+        } else {
+            insertApiKey(
+                ApiKeyEntity(
+                    label = label.ifBlank { "기본 API 키" },
+                    apiKey = trimmed,
+                    isActive = true,
+                    planTier = planTier
+                )
+            )
+        }
     }
 
     @Transaction
@@ -144,6 +172,16 @@ interface JulesDao {
     @Query("DELETE FROM cached_sessions WHERE sessionId = :sessionId")
     suspend fun deleteCachedSession(sessionId: String)
 
+    /** 세션과 해당 활동 캐시를 하나의 트랜잭션으로 제거합니다. */
+    @Transaction
+    suspend fun deleteSessionCache(sessionId: String) {
+        deleteCachedActivities(sessionId)
+        deleteCachedSession(sessionId)
+    }
+
+    @Query("DELETE FROM cached_sessions WHERE apiKeyId = :apiKeyId")
+    suspend fun deleteSessionsByApiKey(apiKeyId: Long)
+
     @Query("UPDATE cached_sessions SET isPinned = :pinned WHERE sessionId = :sessionId")
     suspend fun setSessionPinned(sessionId: String, pinned: Boolean)
 
@@ -156,6 +194,13 @@ interface JulesDao {
 
     @Query("DELETE FROM cached_sources")
     suspend fun clearSources()
+
+    /** 목록 교체 중 빈 목록이 노출되거나 일부만 저장되지 않도록 처리합니다. */
+    @Transaction
+    suspend fun replaceSources(items: List<CachedSourceEntity>) {
+        clearSources()
+        upsertSources(items)
+    }
 
     // --- Scheduled Tasks & Prompt Templates ---
     @Query("SELECT * FROM scheduled_templates ORDER BY id DESC")
@@ -200,7 +245,7 @@ interface JulesDao {
         AppPreferenceEntity::class,
         CachedSessionActivitiesEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class JulesDatabase : RoomDatabase() {
@@ -226,6 +271,20 @@ abstract class JulesDatabase : RoomDatabase() {
             }
         }
 
+        /** 버전 2 -> 3 마이그레이션: API 키별 요금제 티어, 키별 세션 매핑, 무응답(Stalled) 진단 컬럼 추가 */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `api_key_profiles` ADD COLUMN `planTier` TEXT NOT NULL DEFAULT 'FREE'")
+                db.execSQL("ALTER TABLE `cached_sessions` ADD COLUMN `apiKeyId` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `cached_sessions` ADD COLUMN `lastActivityTime` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `cached_sessions` ADD COLUMN `lastOriginator` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `cached_sessions` ADD COLUMN `unansweredUserCount` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `cached_sessions` ADD COLUMN `currentStepTitle` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `cached_sessions` ADD COLUMN `completedStepsCount` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `cached_sessions` ADD COLUMN `totalStepsCount` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         /**
          * 싱글톤 Room 데이터베이스 인스턴스를 반환합니다.
          */
@@ -236,7 +295,7 @@ abstract class JulesDatabase : RoomDatabase() {
                     JulesDatabase::class.java,
                     "jules_code_app.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
@@ -244,4 +303,3 @@ abstract class JulesDatabase : RoomDatabase() {
         }
     }
 }
-

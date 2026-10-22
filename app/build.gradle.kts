@@ -15,8 +15,8 @@ android {
         minSdk = 26
         // ponytail: Android 14/15 기기에서 사이드로딩 시 targetSdk 35 제한 및 Play Protect 경고를 피하기 위해 targetSdk 34 설정 (compileSdk 35 유지)
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
         base.archivesName.set("Jules Code")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -69,6 +69,8 @@ android {
     buildTypes {
         val relSigning = signingConfigs.findByName("release")
         debug {
+            // 검증용 앱을 기존 릴리스 앱과 별도로 설치하여 사용자 데이터를 보존합니다.
+            applicationIdSuffix = ".debug"
             // 디버그/릴리즈 APK 간 교차 덮어쓰기 시 INSTALL_FAILED_UPDATE_INCOMPATIBLE 방지 및 CN=Android Debug 차단 회피
             if (relSigning?.storeFile?.exists() == true) {
                 signingConfig = relSigning
@@ -111,9 +113,10 @@ android {
     }
 
     applicationVariants.all {
+        val vName = versionName ?: "1.2.0"
         outputs.all {
             (this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl)?.outputFileName =
-                if (buildType.name == "release") "Jules Code.apk" else "Jules Code-${buildType.name}.apk"
+                if (buildType.name == "release") "Jules Code-v${vName}.apk" else "Jules Code-v${vName}-${buildType.name}.apk"
         }
     }
 }

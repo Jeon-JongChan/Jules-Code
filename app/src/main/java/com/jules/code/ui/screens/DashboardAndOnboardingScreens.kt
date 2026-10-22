@@ -36,7 +36,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jules.code.R
 import com.jules.code.data.local.CachedSessionEntity
+import com.jules.code.data.local.ApiKeyEntity
 import com.jules.code.data.local.ScheduledTemplateEntity
+import com.jules.code.data.model.parseActivityTimestamp
+import com.jules.code.ui.ApiKeyUsageSummary
 import com.jules.code.ui.JulesViewModel
 import com.jules.code.ui.theme.*
 
@@ -236,11 +239,15 @@ fun DashboardScreen(
     val sessions by viewModel.sessions.collectAsState()
     val templates by viewModel.templates.collectAsState()
     val prefs by viewModel.preferences.collectAsState()
+    val activeKey by viewModel.activeApiKey.collectAsState()
+    val apiKeys by viewModel.apiKeys.collectAsState()
+    val apiKeyUsages by viewModel.apiKeyUsages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isDemo by viewModel.isDemoMode.collectAsState()
 
-    val currentTier = remember(prefs) {
-        JulesViewModel.getTierLimits(prefs["jules_plan_tier"])
+    val currentTier = remember(activeKey, prefs) {
+        val tierCode = activeKey?.planTier?.ifBlank { prefs["jules_plan_tier"] } ?: prefs["jules_plan_tier"]
+        JulesViewModel.getTierLimits(tierCode)
     }
     val used24h = remember(sessions) {
         JulesViewModel.countRolling24hSessions(sessions)
@@ -336,21 +343,27 @@ fun DashboardScreen(
             }
         }
 
-        // 상단 API 남은 작업량(Quota) & 동시 실행 슬롯 대시보드 위젯
+        // 상단 API 키별 작업 소모량(Quota) & 동시 실행 슬롯 대시보드 위젯
         item {
             QuotaRemainingBanner(
+                keyLabel = activeKey?.label ?: stringResource(R.string.onboarding_default_key_label),
                 tierCode = currentTier.code,
+                used24h = used24h,
                 remainingDaily = remainingDaily,
                 dailyLimit = currentTier.dailyLimit,
+                concurrentUsed = concurrentUsed,
                 remainingConcurrent = remainingConcurrent,
                 concurrentLimit = currentTier.concurrentLimit,
+                allKeys = apiKeys,
+                usages = apiKeyUsages,
+                onSwitchKey = { viewModel.switchApiKey(it) },
                 onCycleTier = {
                     val nextTier = when (currentTier.code) {
                         "FREE" -> "PRO"
                         "PRO" -> "ULTRA"
                         else -> "FREE"
                     }
-                    viewModel.updatePreference("jules_plan_tier", nextTier)
+                    viewModel.setActiveKeyTier(nextTier)
                 }
             )
         }
@@ -895,7 +908,8 @@ fun DashboardScreen(
                         session = session,
                         onClick = { onOpenSession(session.sessionId) },
                         onPinToggle = { viewModel.togglePinSession(session.sessionId, session.isPinned) },
-                        onDelete = { viewModel.deleteSession(session.sessionId) }
+                        onDelete = { viewModel.deleteSession(session.sessionId) },
+                        onNudge = { viewModel.nudgeStalledSession(session.sessionId) }
                     )
                 }
             }
@@ -1007,11 +1021,17 @@ fun DashboardScreen(
 
 @Composable
 fun QuotaRemainingBanner(
+    keyLabel: String = "API Key",
     tierCode: String,
+    used24h: Int = 0,
     remainingDaily: Int,
     dailyLimit: Int,
+    concurrentUsed: Int = 0,
     remainingConcurrent: Int,
     concurrentLimit: Int,
+    allKeys: List<ApiKeyEntity> = emptyList(),
+    usages: Map<Long, ApiKeyUsageSummary> = emptyMap(),
+    onSwitchKey: (Long) -> Unit = {},
     onCycleTier: () -> Unit
 ) {
     val dailyFraction = (remainingDaily.toFloat() / dailyLimit.coerceAtLeast(1)).coerceIn(0f, 1f)
@@ -1047,14 +1067,25 @@ fun QuotaRemainingBanner(
                         tint = barColor,
                         modifier = Modifier.size(16.dp)
                     )
-                    Text(
-                        text = stringResource(R.string.quota_banner_title),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = JulesTextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.quota_banner_title),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = JulesTextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = keyLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = JulesTextMuted,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 // 클릭 시 Free / Pro / Ultra 티어 즉시 전환 가능
@@ -1125,6 +1156,67 @@ fun QuotaRemainingBanner(
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+
+            if (allKeys.size > 1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    allKeys.forEach { key ->
+                        val isSelected = key.label == keyLabel
+                        val usage = usages[key.id]
+                        Surface(
+                            onClick = { onSwitchKey(key.id) },
+                            color = if (isSelected) JulesBrandPurple.copy(alpha = 0.25f) else JulesSurfaceElevated,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isSelected) JulesBrandPurple else JulesBorder
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isSelected) JulesBrandPurple else JulesTextMuted)
+                                )
+                                Text(
+                                    text = key.label,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) JulesTextPrimary else JulesTextMuted,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                                if (usage != null) {
+                                    Text(
+                                        text = "${usage.used24h}/${usage.tier.dailyLimit}",
+                                        fontSize = 10.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = if (isSelected) JulesSecondary else JulesTextMuted,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                    if (usage.stalledCount > 0) {
+                                        Text(
+                                            text = "⚠️${usage.stalledCount}",
+                                            fontSize = 9.sp,
+                                            color = JulesWarning
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1220,9 +1312,19 @@ fun SessionSummaryCard(
     session: CachedSessionEntity,
     onClick: () -> Unit,
     onPinToggle: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onNudge: (() -> Unit)? = null
 ) {
+    val isStalled = remember(session) { JulesViewModel.isCachedSessionStalled(session) }
     val context = LocalContext.current
+    var confirmDelete by remember(session.sessionId) { mutableStateOf(false) }
+    if (confirmDelete) {
+        DeleteSessionDialog(
+            title = session.title,
+            onDismiss = { confirmDelete = false },
+            onConfirm = { confirmDelete = false; onDelete() }
+        )
+    }
     Surface(
         color = JulesSurface,
         shape = RoundedCornerShape(16.dp),
@@ -1244,10 +1346,38 @@ fun SessionSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     StateBadge(state = session.state)
+                    if (isStalled) {
+                        Surface(
+                            color = JulesWarning.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(4.dp),
+                            border = BorderStroke(1.dp, JulesWarning.copy(alpha = 0.6f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WarningAmber,
+                                    contentDescription = null,
+                                    tint = JulesWarning,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = "지연 (Stalled)",
+                                    color = JulesWarning,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                     if (session.updateTime.isNotBlank()) {
                         Text(
                             text = session.updateTime.take(16).replace("T", " "),
@@ -1258,7 +1388,7 @@ fun SessionSummaryCard(
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onPinToggle, modifier = Modifier.size(28.dp)) {
+                    IconButton(onClick = onPinToggle) {
                         Icon(
                             imageVector = if (session.isPinned) Icons.Default.PushPin else Icons.Default.PinInvoke,
                             contentDescription = "상단 고정",
@@ -1266,7 +1396,7 @@ fun SessionSummaryCard(
                             modifier = Modifier.size(16.dp)
                         )
                     }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                    IconButton(onClick = { confirmDelete = true }) {
                         Icon(
                             imageVector = Icons.Default.DeleteOutline,
                             contentDescription = "삭제",
@@ -1293,6 +1423,92 @@ fun SessionSummaryCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+
+            if (isStalled || session.currentStepTitle.isNotBlank()) {
+                Surface(
+                    color = if (isStalled) JulesWarning.copy(alpha = 0.08f) else JulesSurfaceElevated,
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, if (isStalled) JulesWarning.copy(alpha = 0.35f) else JulesBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            if (isStalled) {
+                                Text(
+                                    text = "⚠️ 에이전트 무응답 / 지연 감지",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = JulesWarning,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            if (session.currentStepTitle.isNotBlank()) {
+                                val progressText = if (session.totalStepsCount > 0) {
+                                    stringResource(R.string.stalled_step_label, session.currentStepTitle, session.completedStepsCount, session.totalStepsCount)
+                                } else {
+                                    session.currentStepTitle
+                                }
+                                Text(
+                                    text = progressText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = JulesTextMuted,
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        if (isStalled && onNudge != null) {
+                            Spacer(Modifier.width(6.dp))
+                            Surface(
+                                onClick = onNudge,
+                                color = JulesWarning,
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.NotificationsActive,
+                                        contentDescription = null,
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.btn_nudge_agent),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 지연 안내에서는 삭제 동작을 아이콘이나 가로 스크롤 뒤에 숨기지 않습니다.
+            if (isStalled) {
+                OutlinedButton(
+                    onClick = { confirmDelete = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Icon(Icons.Default.DeleteOutline, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.session_delete_action))
+                }
             }
 
             // 하단 모노스페이스 저장소/브랜치 메타칩 + PR 배지 (좁은 화면에서도 main 등이 세로로 깨지지 않도록 1줄 고정 + 가로 스크롤)
@@ -1405,6 +1621,29 @@ fun SessionSummaryCard(
             }
         }
     }
+}
+
+/** 목록과 상세 화면에서 삭제 대상 및 복구 불가 안내를 동일하게 표시합니다. */
+@Composable
+fun DeleteSessionDialog(title: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    // Dialog는 별도 Android 창을 사용하므로 앱 언어의 문자열을 창 생성 전에 확정합니다.
+    val dialogTitle = stringResource(R.string.session_delete_title)
+    val warning = stringResource(R.string.session_delete_warning, title)
+    val deleteLabel = stringResource(R.string.session_delete_action)
+    val cancelLabel = stringResource(R.string.dialog_cancel)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(dialogTitle) },
+        text = { Text(warning) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(deleteLabel, color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(cancelLabel) }
+        }
+    )
 }
 
 /**

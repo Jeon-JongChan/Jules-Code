@@ -42,11 +42,11 @@
     <string name="btn_launch_with_plan">계획 생성 요청 (Code with Plan)</string>
     <string name="btn_launch_agent">Jules 작업 시작 (Launch Agent)</string>
     <string name="tab_recent_sessions">최근 세션 (%1$d)</string>
-    <string name="tab_scheduled_templates">예약 작업 &amp; 템플릿 (%1$d)</string>
+    <string name="tab_scheduled_templates">수동 실행 템플릿 (%1$d)</string>
     <string name="empty_sessions_title">진행 중인 코딩 세션이 없습니다</string>
     <string name="empty_sessions_subtitle">위 컴포저에 프롬프트를 입력하거나 빠른 제안 칩을 눌러 자율 코딩 세션을 시작하세요.</string>
-    <string name="scheduled_header">정기 점검(Scheduled) 및 반복 작업 자동화</string>
-    <string name="scheduled_add_btn">새 스케줄 추가</string>
+    <string name="scheduled_header">반복 작업 템플릿 · 자동 예약은 Jules 웹에서 설정</string>
+    <string name="scheduled_add_btn">새 템플릿 추가</string>
     <string name="template_fill_composer">컴포저에 채우기</string>
     <string name="template_run_now">지금 실행</string>
 
@@ -57,15 +57,15 @@
     <string name="dialog_file_pin_confirm">프롬프트에 추가</string>
     <string name="dialog_cancel">취소</string>
     <string name="dialog_save">저장</string>
-    <string name="dialog_new_template_title">새 예약 작업(Scheduled) / 템플릿 추가</string>
+    <string name="dialog_new_template_title">수동 실행 템플릿 추가</string>
     <string name="dialog_new_template_name">작업 이름</string>
     <string name="dialog_new_template_prompt">반복 실행할 프롬프트</string>
     <string name="dialog_new_template_require_approval">실행 전 계획 승인 요청</string>
     <string name="cadence_daily">매일</string>
     <string name="cadence_weekly">매주</string>
     <string name="cadence_manual">수동</string>
-    <string name="cadence_badge_daily">매일 정기 실행 (CRON: DAILY)</string>
-    <string name="cadence_badge_weekly">매주 정기 실행 (CRON: WEEKLY)</string>
+    <string name="cadence_badge_daily">매일 점검용 템플릿 · 수동 실행</string>
+    <string name="cadence_badge_weekly">매주 점검용 템플릿 · 수동 실행</string>
     <string name="cadence_badge_manual">수동 실행 템플릿 (MANUAL)</string>
 
     <!-- Sessions List -->
@@ -89,7 +89,7 @@
     <string name="source_env_configure">VM 환경 &amp; Memory 설정</string>
     <string name="source_open_github">GitHub 열기</string>
     <string name="dialog_repo_config_title">%1$s 환경 &amp; Memory 설정</string>
-    <string name="dialog_repo_config_desc">Jules 웹의 Repository Setup Script, 환경 변수, Repository Memory(AGENTS.md 컨벤션)를 저장소별로 구성합니다. 세션 생성 시 클라우드 VM에 자동 주입됩니다.</string>
+    <string name="dialog_repo_config_desc">새 세션의 프롬프트에 포함할 설정 지침을 저장합니다. Jules 웹의 VM 설정을 변경하지 않습니다. 환경 변수에 비밀번호·토큰 등 비밀 값을 입력하지 마세요.</string>
     <string name="dialog_repo_script_label">초기 환경 구축 스크립트 (Setup Script)</string>
     <string name="dialog_repo_env_label">환경 변수 (Environment Variables)</string>
     <string name="dialog_repo_memory_label">Repository Memory / 코딩 컨벤션 (AGENTS.md)</string>
@@ -176,5 +176,29 @@
     <string name="model_36_flash_desc">초고속 코드 패치, 단위 테스트 생성 및 빠른 반복 작업</string>
     <string name="detail_plan_steps_format">실행 계획 (%1$d단계)</string>
     <string name="detail_failed_reason">세션 실패 사유: %1$s</string>
+
+    <!-- Per-API-Key Usage & Stalled Session Diagnostics -->
+    <string name="quota_banner_key_title">%1$s • 작업 소모량 (24h)</string>
+    <string name="quota_used_format">24h 소모: %1$d/%2$d회 (잔여 %3$d)</string>
+    <string name="quota_slots_used_format">동시 실행: %1$d/%2$d개 (여유 %3$d)</string>
+    <string name="key_usage_stats_format">24h 소모: %1$d/%2$d회 • 동시 실행: %3$d/%4$d개 • 누적: %5$d건 (완료 %6$d)</string>
+    <string name="key_stalled_warning_format">⚠ 응답 지연/멈춤 의심 세션 %1$d건</string>
+    <string name="badge_stalled_short">⚠ 응답지연 (%1$s)</string>
+    <string name="badge_unanswered_short">미응답 %1$d건</string>
+    <string name="stalled_step_label">머물러 있는 단계: %1$s (완료 %2$d/%3$d)</string>
+    <string name="stalled_last_event_label">마지막 활동: %1$s (%2$s째 무응답 • 미응답 요청 %3$d건)</string>
+    <string name="btn_nudge_agent">깨우기 (재촉 전송)</string>
+    <string name="btn_recreate_session">동일 프롬프트로 새 세션 재시작</string>
+    <string name="btn_open_web_console">Jules 웹 콘솔 열기</string>
+    <string name="filter_stalled">응답 지연 (%1$d)</string>
+    <string name="session_delete_title">세션을 삭제할까요?</string>
+    <string name="session_delete_warning">“%1$s” 세션을 Jules와 이 기기에서 삭제합니다. 삭제한 세션은 복구할 수 없습니다.</string>
+    <string name="session_delete_action">세션 삭제</string>
+    <string name="session_actions">세션 작업 메뉴</string>
+    <string name="session_refresh">세션 새로고침</string>
+    <string name="activity_refresh">활동 새로고침</string>
+    <string name="source_refresh">저장소 브랜치 새로고침</string>
+    <string name="jules_web_features">Jules 웹 기능</string>
+    <string name="jules_web_features_desc">예약 실행·추천 작업·저장소 VM 설정은 Jules 웹에서 관리합니다. 작업 일시정지·재개와 수동 게시도 상세 화면의 웹에서 열기로 이용할 수 있습니다.</string>
 </resources>
 

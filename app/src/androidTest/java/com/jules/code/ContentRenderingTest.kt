@@ -22,6 +22,7 @@ import android.widget.VideoView
 import android.content.ClipboardManager
 import androidx.room.Room
 import androidx.lifecycle.ViewModelStore
+import com.jules.code.data.local.ApiKeyEntity
 import com.jules.code.data.local.JulesDatabase
 import com.jules.code.ui.ApiKeyQuickSwitch
 import com.jules.code.ui.JulesViewModel
@@ -118,8 +119,9 @@ class ContentRenderingTest {
         val store = ViewModelStore()
         try {
             runBlocking {
-                database.dao().saveAndActivateApiKey("검증 A", JulesViewModel.DEMO_API_KEY)
-                database.dao().saveAndActivateApiKey("검증 B", JulesViewModel.DEMO_API_KEY)
+                // 동일 키 저장은 기존 프로필을 갱신하므로 네트워크 없는 두 데모 프로필을 직접 준비합니다.
+                database.dao().insertApiKey(ApiKeyEntity(label = "검증 A", apiKey = JulesViewModel.DEMO_API_KEY))
+                database.dao().insertApiKey(ApiKeyEntity(label = "검증 B", apiKey = JulesViewModel.DEMO_API_KEY, isActive = true))
             }
             val viewModel = JulesViewModel(database.dao())
             rule.runOnIdle { store.put("quick-switch", viewModel) }
