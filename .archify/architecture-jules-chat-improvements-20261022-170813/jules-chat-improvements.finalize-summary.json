@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\Projects\\_Personal\\Jules-Code\\.archify\\architecture-jules-chat-improvements-20261022-170813\\candidate.json",
+    "sha256": "48bd54c0547f8f843189b9405bc56fffc30bb73a38fdf9733c1e450509f944c8",
+    "bytes": 5070
+  },
+  "artifact": {
+    "path": "D:\\Projects\\_Personal\\Jules-Code\\.archify\\architecture-jules-chat-improvements-20261022-170813\\jules-chat-improvements.html",
+    "sha256": "52d6ce75de65a0328b54636529db3ee0f4248295721dd0132074f382583c4c6e",
+    "bytes": 831977
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\Projects\\_Personal\\Jules-Code\\.archify\\architecture-jules-chat-improvements-20261022-170813\\jules-chat-improvements.finalize.json",
+    "summaryReceipt": "D:\\Projects\\_Personal\\Jules-Code\\.archify\\architecture-jules-chat-improvements-20261022-170813\\jules-chat-improvements.finalize-summary.json",
+    "browserCheckReceipt": "D:\\Projects\\_Personal\\Jules-Code\\.archify\\architecture-jules-chat-improvements-20261022-170813\\jules-chat-improvements.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 4441,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "52778cea-dbf8-45ed-8d06-c02608b9a87b",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\Projects\\_Personal\\Jules-Code\\.archify\\architecture-jules-chat-improvements-20261022-170813\\candidate.json",
+  "output": "D:\\Projects\\_Personal\\Jules-Code\\.archify\\architecture-jules-chat-improvements-20261022-170813\\jules-chat-improvements.html",
+  "specification": {
+    "sha256": "48bd54c0547f8f843189b9405bc56fffc30bb73a38fdf9733c1e450509f944c8",
+    "bytes": 5070
+  },
+  "artifact": {
+    "sha256": "52d6ce75de65a0328b54636529db3ee0f4248295721dd0132074f382583c4c6e",
+    "bytes": 831977
+  }
+}

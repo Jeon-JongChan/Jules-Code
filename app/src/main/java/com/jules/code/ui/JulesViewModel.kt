@@ -10,6 +10,8 @@ import com.jules.code.data.remote.JulesApiClient
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -152,6 +154,8 @@ class JulesViewModel(
      * 등록된 다른 API 키 프로필로 전환합니다.
      */
     fun switchApiKey(id: Long) {
+        if (id == activeApiKey.value?.id || apiKeys.value.none { it.id == id }) return
+        closeSession()
         viewModelScope.launch {
             dao.switchActiveApiKey(id)
             showMessage("API 키 프로필을 전환했습니다.")
@@ -362,7 +366,9 @@ class JulesViewModel(
             if (memActs == null) {
                 dao.getCachedActivities(sessionId)?.let { cachedRow ->
                     runCatching {
-                        api.json.decodeFromString<List<JulesActivity>>(cachedRow.activitiesJson)
+                        withContext(Dispatchers.Default) {
+                            api.json.decodeFromString<List<JulesActivity>>(cachedRow.activitiesJson)
+                        }
                     }.onSuccess { diskActs ->
                         if (diskActs.isNotEmpty() && _selectedSessionId.value == sessionId) {
                             inMemoryActivitiesCache[sessionId] = diskActs
@@ -401,6 +407,9 @@ class JulesViewModel(
         pollingJob?.cancel()
         pollingJob = null
         _isAwaitingResponse.value = false
+        _selectedSessionId.value = null
+        _selectedSessionDetail.value = null
+        _activities.value = emptyList()
     }
 
     /**
@@ -459,7 +468,7 @@ class JulesViewModel(
                         dao.upsertCachedActivities(
                             CachedSessionActivitiesEntity(
                                 sessionId = sessionId,
-                                activitiesJson = api.json.encodeToString(rawServerActs)
+                                activitiesJson = withContext(Dispatchers.Default) { api.json.encodeToString(rawServerActs) }
                             )
                         )
                     }
@@ -1006,6 +1015,7 @@ class JulesViewModel(
                 "Response Language: English — Always write all Execution Plans, Progress Updates, and Agent Messages in English."
             }
             directives.add(langInstruction)
+            directives.add(MEDIA_DIRECTIVE)
 
             val modelName = getModelDisplayName(modelId)
             directives.add("Model Profile: $modelName")
@@ -1036,8 +1046,11 @@ class JulesViewModel(
             } else {
                 "[Language Setting: Please respond and write progress updates in English.]"
             }
-            return "$message\n\n$langRule"
+            return "$message\n\n$langRule\n$MEDIA_DIRECTIVE"
         }
+
+        /** 미디어 요청은 실제 API 첨부로 전달하도록 에이전트에 안내합니다. */
+        private const val MEDIA_DIRECTIVE = "이미지·영상 요청 시 사용 가능한 내부 검증/브라우저 도구로 캡처·녹화하고 artifacts.media에 mimeType과 Base64 data를 첨부하세요. 파일 경로나 마크다운만 답하지 마세요. 도구가 없거나 첨부가 불가능하면 그 한계를 설명하고 결과를 꾸며내지 마세요."
 
         /**
          * 타임라인에 표시할 사용자 메시지에서 내부 자동 주입 지시어(`[Jules Agent Execution Context]`, `[언어 설정: ...]`)를 제거하여

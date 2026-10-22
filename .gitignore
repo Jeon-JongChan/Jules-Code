@@ -1,6 +1,7 @@
 .graphify/
 .docs
 .build/kotlin/
+.build/*.log
 .gradle/
 .kotlin
 build/

@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jules.code.ui.ApiKeyQuickSwitch
 import com.jules.code.ui.JulesViewModel
 import com.jules.code.ui.ProvideJulesLocalization
 import com.jules.code.ui.screens.*
@@ -66,6 +68,15 @@ fun JulesMobileApp(
 
     var currentTab by remember { mutableIntStateOf(0) } // 0: 대시보드, 1: 세션, 2: 저장소(Sources), 3: 설정
     var openedSessionId by remember { mutableStateOf(initialSessionId) }
+    var previousKeyId by remember { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(activeKey?.id) {
+        if (previousKeyId != null && previousKeyId != activeKey?.id) {
+            viewModel.closeSession()
+            openedSessionId = null
+        }
+        previousKeyId = activeKey?.id
+    }
 
     val currentTier = remember(prefs) {
         JulesViewModel.getTierLimits(prefs["jules_plan_tier"])
@@ -110,11 +121,11 @@ fun JulesMobileApp(
                 openedSessionId = null
             }
             BackHandler(onBack = handleCloseSession)
-            SessionDetailScreen(
+            SelectionContainer { SessionDetailScreen(
                 viewModel = viewModel,
                 onBack = handleCloseSession,
                 snackbarHostState = snackbarHostState
-            )
+            ) }
             return@ProvideJulesLocalization
         }
 
@@ -160,6 +171,7 @@ fun JulesMobileApp(
                             }
                         },
                         actions = {
+                            ApiKeyQuickSwitch(viewModel)
                             // 상단 바 직관적 남은 일일 작업량(Quota) 칩
                             Surface(
                                 onClick = { currentTab = 3 },
@@ -237,7 +249,7 @@ fun JulesMobileApp(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                when (currentTab) {
+                SelectionContainer { when (currentTab) {
                     0 -> DashboardScreen(
                         viewModel = viewModel,
                         onOpenSession = { id ->
@@ -254,7 +266,7 @@ fun JulesMobileApp(
                     )
                     2 -> SourcesScreen(viewModel = viewModel)
                     3 -> SettingsScreen(viewModel = viewModel)
-                }
+                } }
             }
         }
     }

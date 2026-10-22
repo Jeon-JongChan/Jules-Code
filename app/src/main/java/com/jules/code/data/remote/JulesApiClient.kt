@@ -138,7 +138,8 @@ class JulesApiClient(
             if (!pageToken.isNullOrBlank()) add("pageToken=${encode(pageToken)}")
         }.joinToString("&")
         val raw = request("GET", "/sessions/$cleanId/activities?$params", apiKey)
-        parseActivitiesFlexible(raw)
+        // Base64 미디어가 포함된 큰 JSON은 UI 스레드에서 파싱하지 않습니다.
+        withContext(Dispatchers.Default) { parseActivitiesFlexible(raw) }
     }
 
     /**

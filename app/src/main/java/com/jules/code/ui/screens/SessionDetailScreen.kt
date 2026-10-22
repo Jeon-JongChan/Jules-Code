@@ -4,10 +4,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.speech.tts.TextToSpeech
-import android.util.Base64
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -41,7 +40,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.jules.code.ui.JulesBrowserUtils
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -52,8 +50,12 @@ import androidx.compose.ui.unit.sp
 import com.jules.code.R
 import com.jules.code.data.model.*
 import com.jules.code.ui.JulesViewModel
+import com.jules.code.ui.SelectableContent
+import com.jules.code.ui.ApiKeyQuickSwitch
 import com.jules.code.ui.theme.*
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * OpenAI Codex 태스크 워크스페이스 & Google Jules 세션 상세 화면을 결합한 모바일 에이전트 콘솔입니다.
@@ -199,6 +201,7 @@ fun SessionDetailScreen(
                         }
                     },
                     actions = {
+                        ApiKeyQuickSwitch(viewModel, onSwitch = onBack)
                         // GitHub 저장소 열기 버튼 (저장소 연동된 세션인 경우 기본 브라우저로 실행)
                         val repoDisp = session?.repoDisplay.orEmpty()
                         val hasGithubRepo = repoDisp.isNotBlank() && !repoDisp.contains("Repoless", ignoreCase = true)
@@ -519,8 +522,7 @@ fun SessionDetailScreen(
                                 ActivityTimelineCard(
                                     activity = act,
                                     onCopyPatch = { patchText ->
-                                        copyToClipboard(context, "Jules Git Patch", patchText)
-                                        viewModel.showMessage("Git patch copied.")
+                                        if (copyToClipboard(context, "Jules Git Patch", patchText)) viewModel.showMessage("패치를 복사했습니다.")
                                     }
                                 )
                             }
@@ -561,10 +563,9 @@ fun SessionDetailScreen(
                             items(allChangeSets) { cs ->
                                 ChangeSetDiffCard(
                                     changeSet = cs,
-                                    initiallyExpanded = true,
+                                    initiallyExpanded = false,
                                     onCopyPatch = { patchText ->
-                                        copyToClipboard(context, "Jules Git Patch", patchText)
-                                        viewModel.showMessage("Git patch copied.")
+                                        if (copyToClipboard(context, "Jules Git Patch", patchText)) viewModel.showMessage("패치를 복사했습니다.")
                                     }
                                 )
                             }
@@ -656,24 +657,23 @@ fun ActivityTimelineCard(
             }
 
             activity.resolvedUserMessage?.takeIf { it.isNotBlank() }?.let { msg ->
-                Text(text = msg, style = MaterialTheme.typography.bodyMedium, lineHeight = 20.sp)
+                SelectableContent(text = msg, style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp))
             }
 
             activity.resolvedAgentMessage?.takeIf { it.isNotBlank() }?.let { msg ->
-                Text(text = msg, style = MaterialTheme.typography.bodyMedium, lineHeight = 20.sp)
+                SelectableContent(text = msg, style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp))
             }
 
             activity.progressUpdated?.let { prog ->
                 if (prog.title.isNotBlank()) {
-                    Text(
+                    SelectableContent(
                         text = prog.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                         color = JulesSecondary
                     )
                 }
                 if (prog.description.isNotBlank()) {
-                    Text(
+                    SelectableContent(
                         text = prog.description,
                         style = MaterialTheme.typography.bodySmall,
                         color = JulesTextMuted
@@ -686,7 +686,7 @@ fun ActivityTimelineCard(
                 activity.resolvedAgentMessage == null &&
                 activity.progressUpdated == null
             ) {
-                Text(text = activity.description, style = MaterialTheme.typography.bodyMedium)
+                SelectableContent(text = activity.description)
             }
 
             activity.planGenerated?.plan?.let { plan ->
@@ -700,7 +700,7 @@ fun ActivityTimelineCard(
                     border = BorderStroke(1.dp, JulesDanger.copy(alpha = 0.4f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
+                    SelectableContent(
                         text = stringResource(R.string.detail_failed_reason, fail.reason),
                         color = JulesDanger,
                         style = MaterialTheme.typography.bodySmall,
@@ -809,14 +809,13 @@ fun PlanDetailCard(
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
+                        SelectableContent(
                             text = step.displayTitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                             color = JulesTextPrimary
                         )
                         if (step.description.isNotBlank() && step.description != step.displayTitle) {
-                            Text(
+                            SelectableContent(
                                 text = step.description,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = JulesTextMuted
@@ -839,6 +838,7 @@ data class DiffFileSummary(
     val removed: Int
 )
 
+/** 전체 줄 목록을 만들지 않고 파일별 변경 통계를 집계합니다. */
 fun parseDiffFileSummaries(unidiffPatch: String): List<DiffFileSummary> {
     if (unidiffPatch.isBlank()) return emptyList()
     val results = mutableListOf<DiffFileSummary>()
@@ -846,6 +846,7 @@ fun parseDiffFileSummaries(unidiffPatch: String): List<DiffFileSummary> {
     var addCount = 0
     var remCount = 0
 
+    /** 현재 파일의 집계를 결과에 추가합니다. */
     fun flushCurrent() {
         if (currentFile.isNotBlank() || addCount > 0 || remCount > 0) {
             val path = currentFile.ifBlank { "changed_file" }
@@ -896,7 +897,9 @@ fun ChangeSetDiffCard(
     val baseCommit = changeSet.gitPatch?.baseCommitId?.ifBlank { changeSet.baseCommit } ?: changeSet.baseCommit
 
     var isExpanded by remember(patch, initiallyExpanded) { mutableStateOf(initiallyExpanded) }
-    val fileSummaries = remember(patch) { parseDiffFileSummaries(patch) }
+    val fileSummaries by produceState<List<DiffFileSummary>>(emptyList(), patch) {
+        value = withContext(Dispatchers.Default) { parseDiffFileSummaries(patch) }
+    }
     val totalAdded = remember(fileSummaries) { fileSummaries.sumOf { it.added } }
     val totalRemoved = remember(fileSummaries) { fileSummaries.sumOf { it.removed } }
     val primaryHeader = remember(fileSummaries, commitMsg) {
@@ -914,14 +917,13 @@ fun ChangeSetDiffCard(
         border = BorderStroke(1.dp, if (isExpanded) JulesBrandPurple.copy(alpha = 0.6f) else JulesBorder),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = patch.isNotBlank()) { isExpanded = !isExpanded }
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().clickable(enabled = patch.isNotBlank()) { isExpanded = !isExpanded },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -988,6 +990,11 @@ fun ChangeSetDiffCard(
                     ) {
                         IconButton(
                             onClick = {
+                                // Binder 전송 한계를 넘는 원문은 구간별 복사로 안내합니다.
+                                if (patch.length > 100_000) {
+                                    android.widget.Toast.makeText(context, "긴 패치는 펼친 뒤 구간별 복사를 사용해 주세요.", android.widget.Toast.LENGTH_LONG).show()
+                                    return@IconButton
+                                }
                                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = "text/x-patch"
                                     putExtra(Intent.EXTRA_SUBJECT, commitMsg.ifBlank { "jules-changes.patch" })
@@ -1018,14 +1025,13 @@ fun ChangeSetDiffCard(
 
             // 여러 파일이 변경된 경우 접힌 상태에서도 파일별 +N / -M 요약 칩을 간결하게 표시
             if (fileSummaries.size > 1) {
-                Row(
+                LazyRow(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
+                        .fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    fileSummaries.forEach { fs ->
+                    items(fileSummaries) { fs ->
                         Surface(
                             color = JulesSurfaceElevated,
                             shape = RoundedCornerShape(6.dp),
@@ -1070,54 +1076,12 @@ fun ChangeSetDiffCard(
 
             // 클릭하여 펼쳤을 때만(`isExpanded == true`) 전체 Unified Diff 본문 렌더링
             if (isExpanded && patch.isNotBlank()) {
-                val parsedLines = remember(patch) { patch.lines() }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF05070B))
-                        .horizontalScroll(rememberScrollState())
-                        .padding(vertical = 6.dp),
-                    verticalArrangement = Arrangement.spacedBy(1.dp)
-                ) {
-                    parsedLines.forEachIndexed { idx, line ->
-                        val bgColor = when {
-                            line.startsWith("+") && !line.startsWith("+++") -> Color(0xFF102B1E)
-                            line.startsWith("-") && !line.startsWith("---") -> Color(0xFF34161B)
-                            line.startsWith("@@") -> Color(0xFF142238)
-                            line.startsWith("diff --git") -> Color(0xFF171C28)
-                            else -> Color.Transparent
-                        }
-                        val textColor = when {
-                            line.startsWith("+") && !line.startsWith("+++") -> Color(0xFF56D364)
-                            line.startsWith("-") && !line.startsWith("---") -> Color(0xFFF85149)
-                            line.startsWith("@@") -> Color(0xFF79C0FF)
-                            line.startsWith("diff --git") -> JulesPrimary
-                            else -> Color(0xFFC9D1D9)
-                        }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(bgColor)
-                                .padding(horizontal = 8.dp, vertical = 1.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = (idx + 1).toString().padStart(3, ' '),
-                                color = JulesTextMuted.copy(alpha = 0.5f),
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
-                                modifier = Modifier.width(28.dp)
-                            )
-                            Text(
-                                text = line,
-                                color = textColor,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-                }
+                SelectableContent(
+                    text = patch,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    diff = true,
+                    initiallyExpanded = true
+                )
             }
         }
     }
@@ -1156,11 +1120,9 @@ fun BashOutputCard(bash: BashOutputArtifact) {
                         Box(Modifier.size(7.dp).clip(CircleShape).background(Color(0xFF3FB950).copy(alpha = 0.7f)))
                     }
                     Spacer(Modifier.width(4.dp))
-                    Text(
+                    SelectableContent(
                         text = "$ ${bash.command}",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp, fontWeight = FontWeight.Bold),
                         color = JulesSecondary
                     )
                 }
@@ -1182,15 +1144,10 @@ fun BashOutputCard(bash: BashOutputArtifact) {
 
             if (bash.output.isNotBlank()) {
                 HorizontalDivider(color = JulesBorder.copy(alpha = 0.6f))
-                Text(
+                SelectableContent(
                     text = bash.output,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    color = Color(0xFFD0D7DE),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(top = 2.dp)
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
+                    color = Color(0xFFD0D7DE)
                 )
             }
         }
@@ -1399,89 +1356,17 @@ fun ImageZoomDialog(
  */
 @Composable
 fun MediaArtifactCard(media: MediaArtifact) {
-    var showZoomDialog by remember { mutableStateOf(false) }
-    val bitmap = remember(media.data) {
-        try {
-            val bytes = Base64.decode(media.data, Base64.DEFAULT)
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    if (showZoomDialog && bitmap != null) {
-        ImageZoomDialog(
-            bitmap = bitmap,
-            title = "미디어 산출물 (${media.mimeType})",
-            onDismiss = { showZoomDialog = false }
-        )
-    }
-
-    Surface(
-        color = JulesSurfaceElevated,
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, JulesBorder),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "미디어 산출물 (${media.mimeType})",
-                    fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = JulesTextMuted
-                )
-                if (bitmap != null) {
-                    Row(
-                        modifier = Modifier
-                            .clickable { showZoomDialog = true }
-                            .padding(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ZoomIn,
-                            contentDescription = "확대보기",
-                            tint = JulesPrimary,
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Text(
-                            text = "클릭하여 확대",
-                            fontSize = 11.sp,
-                            color = JulesPrimary,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-
-            if (bitmap != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 260.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { showZoomDialog = true }
-                ) {
-                    Image(
-                        bitmap = bitmap,
-                        contentDescription = "Jules 생성 이미지 (클릭하여 확대)",
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-        }
-    }
+    MediaContent(media)
 }
 
-private fun copyToClipboard(context: Context, label: String, text: String) {
+/** 클립보드에 텍스트를 복사합니다. */
+
+private fun copyToClipboard(context: Context, label: String, text: String): Boolean {
     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+    if (text.length > 100_000) {
+        android.widget.Toast.makeText(context, "긴 글은 펼친 뒤 구간별 복사를 사용해 주세요.", android.widget.Toast.LENGTH_LONG).show()
+        return false
+    }
     cm?.setPrimaryClip(ClipData.newPlainText(label, text))
+    return cm != null
 }
