@@ -3,11 +3,14 @@ package com.jules.code
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import com.jules.code.data.local.CachedSessionEntity
 import com.jules.code.ui.ProvideJulesLocalization
+import com.jules.code.ui.formatLocalTimestamp
 import com.jules.code.ui.screens.SessionSummaryCard
 import com.jules.code.ui.theme.JulesTheme
 import org.junit.Assert.assertEquals
@@ -18,6 +21,42 @@ import org.junit.Test
 class JulesSessionDeletionTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    /** 좁은 카드에서 상태는 하나만 표시하고 날짜·시간은 한 줄로 유지합니다. */
+    @Test
+    fun summaryShowsOneStatusAndSingleLineTimestamp() {
+        val session = androidx.compose.runtime.mutableStateOf(CachedSessionEntity(
+            sessionId = "status-test", name = "sessions/status-test", title = "상태 표시 테스트",
+            prompt = "테스트", state = "IN_PROGRESS", repoDisplay = "owner/repo", branchDisplay = "main",
+            prUrl = "", prTitle = "", createTime = "2020-01-01T00:00:00Z", updateTime = "2020-01-01T00:00:00Z",
+            lastActivityTime = "2020-01-01T00:00:00Z", lastOriginator = "agent"
+        ))
+        composeRule.setContent {
+            JulesTheme {
+                ProvideJulesLocalization(langPref = "ko") {
+                    Box(Modifier.width(280.dp)) {
+                        SessionSummaryCard(session.value, onClick = {}, onPinToggle = {}, onDelete = {})
+                    }
+                }
+            }
+        }
+        composeRule.onNodeWithText("지연 (Stalled)").assertIsDisplayed()
+        composeRule.onNodeWithText("활성 • 코드 작업 중").assertDoesNotExist()
+        val layouts = mutableListOf<TextLayoutResult>()
+        val timestamp = formatLocalTimestamp(session.value.updateTime)
+        composeRule.onNodeWithText(timestamp).assertIsDisplayed()
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals(1, layouts.single().lineCount)
+        composeRule.runOnIdle {
+            session.value = session.value.copy(lastActivityTime = java.time.Instant.now().toString())
+        }
+        composeRule.onNodeWithText("지연 (Stalled)").assertDoesNotExist()
+        composeRule.onNodeWithText("활성 • 코드 작업 중").assertIsDisplayed()
+        layouts.clear()
+        composeRule.onNodeWithText(timestamp)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals(1, layouts.single().lineCount)
+    }
 
     /** 좁은 화면에서도 조회 실패를 0건으로 오인하지 않고 로딩과 성공으로 전환합니다. */
     @Test

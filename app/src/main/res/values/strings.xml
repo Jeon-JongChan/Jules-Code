@@ -204,4 +204,7 @@
     <string name="key_sync_pending">Not synced yet</string>
     <string name="key_sync_success">Synced %1$s</string>
     <string name="key_sync_error">Sync failed (cached data): %1$s</string>
+    <string name="activity_image_count">Images: %1$d</string>
+    <string name="activity_video_count">Videos: %1$d</string>
+    <string name="activity_media_count">Other media: %1$d</string>
 </resources>

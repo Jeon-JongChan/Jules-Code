@@ -41,6 +41,7 @@ import com.jules.code.data.local.ScheduledTemplateEntity
 import com.jules.code.data.model.parseActivityTimestamp
 import com.jules.code.ui.ApiKeyUsageSummary
 import com.jules.code.ui.JulesViewModel
+import com.jules.code.ui.formatLocalTimestamp
 import com.jules.code.ui.theme.*
 
 /**
@@ -1349,12 +1350,11 @@ fun SessionSummaryCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
+                Column(
                     modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    StateBadge(state = session.state)
+                    // 지연 진단이 있으면 활성 상태 배지를 대체해 중복 표시를 막습니다.
                     if (isStalled) {
                         Surface(
                             color = JulesWarning.copy(alpha = 0.2f),
@@ -1377,17 +1377,25 @@ fun SessionSummaryCard(
                                     color = JulesWarning,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
+                    } else {
+                        StateBadge(state = session.state)
                     }
                     if (session.updateTime.isNotBlank()) {
                         Text(
-                            text = session.updateTime.take(16).replace("T", " "),
+                            text = formatLocalTimestamp(session.updateTime),
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
-                            color = JulesTextMuted
+                            color = JulesTextMuted,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -1690,7 +1698,10 @@ fun StateBadge(state: String) {
                 text = if (isAlive) "활성 • $label" else label,
                 color = color,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import com.jules.code.R
 import com.jules.code.data.model.*
 import com.jules.code.ui.JulesViewModel
+import com.jules.code.ui.formatLocalTimestamp
 import com.jules.code.ui.SelectableContent
 import com.jules.code.ui.ApiKeyQuickSwitch
 import com.jules.code.ui.theme.*
@@ -693,7 +694,23 @@ fun SessionDetailScreen(
                                         }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                                             Column(Modifier.weight(1f)) {
                                                 Text(activitySummaryTitle(act), fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                                Text(act.createTime, fontSize = 11.sp, color = JulesTextMuted)
+                                                Text(formatLocalTimestamp(act.createTime), fontSize = 11.sp, color = JulesTextMuted)
+                                                // 첨부 본문을 받기 전에도 요약의 MIME 정보로 종류와 개수를 알립니다.
+                                                val media = act.artifacts.mapNotNull { it.media }
+                                                if (media.isNotEmpty()) {
+                                                    val images = media.count { it.mimeType.startsWith("image/", ignoreCase = true) }
+                                                    val videos = media.count { it.mimeType.startsWith("video/", ignoreCase = true) }
+                                                    val others = media.size - images - videos
+                                                    Text(
+                                                        text = listOfNotNull(
+                                                            if (images > 0) stringResource(R.string.activity_image_count, images) else null,
+                                                            if (videos > 0) stringResource(R.string.activity_video_count, videos) else null,
+                                                            if (others > 0) stringResource(R.string.activity_media_count, others) else null
+                                                        ).joinToString(" · "),
+                                                        color = JulesSecondary,
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                }
                                             }
                                             Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                                 if (expanded) "활동 접기" else "활동 펼치기")
@@ -845,7 +862,7 @@ fun ActivityTimelineCard(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = activity.createTime.take(19).replace("T", " "),
+                        text = formatLocalTimestamp(activity.createTime),
                         fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.labelSmall,
                         color = JulesTextMuted

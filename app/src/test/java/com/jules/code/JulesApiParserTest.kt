@@ -11,6 +11,7 @@ import com.jules.code.data.model.PlanStep
 import com.jules.code.data.remote.JulesApiClient
 import com.jules.code.ui.JulesLocaleManager
 import com.jules.code.ui.JulesViewModel
+import com.jules.code.ui.formatLocalTimestamp
 import com.jules.code.ui.screens.parseDiffFileSummaries
 import java.util.Locale
 import org.junit.Assert.assertEquals
@@ -25,6 +26,25 @@ import org.junit.Test
  * Jules API 응답 파서(문자열/객체 양면 gitPatch 호환 및 메시지 필드 통합)를 검증하는 단위 테스트입니다.
  */
 class JulesApiParserTest {
+
+    /** 서버 오프셋·날짜 경계·서머타임을 기기 시간대로 변환하고 상대 표시는 보존합니다. */
+    @Test
+    fun formatLocalTimestampUsesDeviceZoneAndPreservesNonDates() {
+        val seoul = java.time.ZoneId.of("Asia/Seoul")
+        val newYork = java.time.ZoneId.of("America/New_York")
+        assertEquals("2026-10-23 01:30", formatLocalTimestamp("2026-10-22T16:30:00.123456789Z", seoul))
+        assertEquals("2026-10-23 01:30", formatLocalTimestamp("2026-10-22T18:30:00+02:00", seoul))
+        assertEquals("2026-10-23 01:30", formatLocalTimestamp("2026-10-22T16:30:00", seoul))
+        assertEquals("2026-07-01 08:00", formatLocalTimestamp("2026-07-01T12:00:00Z", newYork))
+        assertEquals("2026-01-01 07:00", formatLocalTimestamp("2026-01-01T12:00:00Z", newYork))
+        assertEquals("방금 전", formatLocalTimestamp("방금 전", seoul))
+        assertEquals("잘못된 시각", formatLocalTimestamp("잘못된 시각", seoul))
+        assertEquals("", formatLocalTimestamp("", seoul))
+        assertEquals(
+            formatLocalTimestamp("2026-10-22T16:30:00Z", java.time.ZoneId.systemDefault()),
+            formatLocalTimestamp("2026-10-22T16:30:00Z")
+        )
+    }
 
     @Test
     fun parseFlexibleActivities_handlesBothObjectAndPrimitiveGitPatch() {

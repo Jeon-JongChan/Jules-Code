@@ -204,5 +204,8 @@
     <string name="key_sync_pending">아직 조회하지 않음</string>
     <string name="key_sync_success">%1$s 동기화 완료</string>
     <string name="key_sync_error">조회 실패(기존 캐시 표시): %1$s</string>
+    <string name="activity_image_count">이미지 %1$d개</string>
+    <string name="activity_video_count">영상 %1$d개</string>
+    <string name="activity_media_count">기타 미디어 %1$d개</string>
 </resources>
 
