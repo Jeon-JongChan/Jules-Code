@@ -41,6 +41,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.jules.code.ui.JulesBrowserUtils
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +71,11 @@ fun SessionDetailScreen(
     val context = LocalContext.current
     val session by viewModel.selectedSessionDetail.collectAsState()
     val activities by viewModel.activities.collectAsState()
+    val timelineLoading by viewModel.isTimelineLoading.collectAsState()
+    val loadingActivityIds by viewModel.loadingActivityIds.collectAsState()
+    val activityErrors by viewModel.activityErrors.collectAsState()
+    val demoMode by viewModel.isDemoMode.collectAsState()
+    var expandedActivityIds by remember(session?.sessionId) { mutableStateOf(emptySet<String>()) }
     val prefs by viewModel.preferences.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isAwaitingResponse by viewModel.isAwaitingResponse.collectAsState()
@@ -123,11 +129,11 @@ fun SessionDetailScreen(
     val allPlans = remember(activities) {
         activities.mapNotNull { it.planGenerated?.plan }
     }
-    val allChangeSets = remember(activities) {
-        activities.flatMap { it.artifacts }.mapNotNull { it.changeSet }
+    val allChangeSets = remember(activities, demoMode) {
+        activities.filter { it.detailsLoaded || demoMode }.flatMap { it.artifacts }.mapNotNull { it.changeSet }
     }
-    val allBashOutputs = remember(activities) {
-        activities.flatMap { it.artifacts }.mapNotNull { it.bashOutput }
+    val allBashOutputs = remember(activities, demoMode) {
+        activities.filter { it.detailsLoaded || demoMode }.flatMap { it.artifacts }.mapNotNull { it.bashOutput }
     }
 
     Scaffold(
@@ -659,7 +665,14 @@ fun SessionDetailScreen(
             ) {
                 when (activeTab) {
                     0 -> {
-                        if (activities.isEmpty() && !isAwaitingResponse) {
+                        if (activities.isEmpty() && timelineLoading) {
+                            item {
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(Modifier.size(24.dp))
+                                    Text(if (isKo) "이전 활동을 불러오는 중입니다…" else "Loading previous activities…")
+                                }
+                            }
+                        } else if (activities.isEmpty() && !isAwaitingResponse) {
                             item {
                                 EmptyStateCard(
                                     title = stringResource(R.string.empty_timeline_title),
@@ -668,15 +681,41 @@ fun SessionDetailScreen(
                             }
                         } else {
                             items(activities, key = { it.id.ifBlank { it.name + it.createTime } }) { act ->
-                                ActivityTimelineCard(
+                                val activityId = act.id.ifBlank { act.name.substringAfterLast('/') }
+                                val expanded = activityId in expandedActivityIds
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Surface(color = JulesSurface, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                                        Row(Modifier.fillMaxWidth().testTag("activity-summary-$activityId").clickable {
+                                            expandedActivityIds = if (expanded) expandedActivityIds - activityId else expandedActivityIds + activityId
+                                            if (!expanded && !act.detailsLoaded && !demoMode && !activityId.startsWith("optimistic-")) {
+                                                session?.sessionId?.let { viewModel.refreshActivity(it, activityId) }
+                                            }
+                                        }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(activitySummaryTitle(act), fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                                Text(act.createTime, fontSize = 11.sp, color = JulesTextMuted)
+                                            }
+                                            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                                if (expanded) "활동 접기" else "활동 펼치기")
+                                        }
+                                    }
+                                    if (expanded && activityId in loadingActivityIds) CircularProgressIndicator(Modifier.size(24.dp))
+                                    else if (expanded && activityErrors[activityId] != null) {
+                                        Text(activityErrors[activityId].orEmpty(), color = JulesDanger)
+                                        TextButton(onClick = { session?.sessionId?.let { viewModel.refreshActivity(it, activityId) } }) { Text("다시 시도") }
+                                    } else if (expanded && (act.detailsLoaded || demoMode || activityId.startsWith("optimistic-"))) ActivityTimelineCard(
                                     activity = act,
                                     onRefresh = if (act.id.startsWith("optimistic-") || act.id.isBlank()) null else {
-                                        { session?.sessionId?.let { viewModel.refreshActivity(it, act.id) } }
+                                        { session?.sessionId?.let { viewModel.refreshActivity(it, act.id, force = true) } }
                                     },
                                     onCopyPatch = { patchText ->
                                         if (copyToClipboard(context, "Jules Git Patch", patchText)) viewModel.showMessage("패치를 복사했습니다.")
                                     }
                                 )
+                                    else if (expanded) TextButton(onClick = {
+                                        session?.sessionId?.let { viewModel.refreshActivity(it, activityId) }
+                                    }) { Text("본문 불러오기") }
+                                }
                             }
                             if (isAwaitingResponse) {
                                 item(key = "agent_responding_loader") {
@@ -709,7 +748,8 @@ fun SessionDetailScreen(
                             item {
                                 EmptyStateCard(
                                     title = stringResource(R.string.empty_diff_title),
-                                    subtitle = stringResource(R.string.empty_diff_subtitle)
+                                    subtitle = if (activities.any { !it.detailsLoaded && it.artifacts.any { artifact -> artifact.changeSet != null } })
+                                        "타임라인의 코드 변경 활동을 펼치면 패치를 불러옵니다." else stringResource(R.string.empty_diff_subtitle)
                                 )
                             }
                         } else {
@@ -729,7 +769,8 @@ fun SessionDetailScreen(
                             item {
                                 EmptyStateCard(
                                     title = stringResource(R.string.empty_bash_title),
-                                    subtitle = stringResource(R.string.empty_bash_subtitle)
+                                    subtitle = if (activities.any { !it.detailsLoaded && it.artifacts.any { artifact -> artifact.bashOutput != null } })
+                                        "타임라인의 명령 실행 활동을 펼치면 로그를 불러옵니다." else stringResource(R.string.empty_bash_subtitle)
                                 )
                             }
                         } else {
@@ -875,9 +916,38 @@ fun ActivityTimelineCard(
                 art.changeSet?.let { ChangeSetDiffCard(changeSet = it, initiallyExpanded = false, onCopyPatch = onCopyPatch) }
                 art.media?.let { MediaArtifactCard(it) }
             }
+            activity.contentFiles.forEach { (label, path) ->
+                Text(when {
+                    label.startsWith("unidiffPatch") || label.startsWith("gitPatch") -> "코드 패치 원문"
+                    label.startsWith("output") -> "실행 로그 원문"
+                    else -> "활동 원문"
+                }, fontWeight = FontWeight.Bold)
+                com.jules.code.ui.FileSelectableContent(path, diff = label.startsWith("unidiffPatch") || label.startsWith("gitPatch"))
+            }
         }
     }
 }
+
+/** 접힌 제목에서도 사용자 질문과 Jules 응답을 구분하고 활동 종류를 표시합니다. */
+fun activitySummaryTitle(activity: JulesActivity): String =
+    (when {
+        activity.resolvedUserMessage != null -> "나 · "
+        activity.resolvedAgentMessage != null -> "Jules · "
+        else -> ""
+    }) + (activity.progressUpdated?.title?.takeIf { it.isNotBlank() }
+        ?: activity.description.lineSequence().firstOrNull()?.takeIf { it.isNotBlank() }?.take(160)
+        ?: when {
+            activity.planGenerated != null -> "실행 계획 생성"
+            activity.planApproved != null -> "실행 계획 승인"
+            activity.resolvedUserMessage != null -> "사용자 메시지"
+            activity.resolvedAgentMessage != null -> "에이전트 메시지"
+            activity.sessionCompleted != null -> "작업 완료"
+            activity.sessionFailed != null -> "작업 실패"
+            activity.artifacts.any { it.changeSet != null } -> "코드 변경"
+            activity.artifacts.any { it.bashOutput != null } -> "명령 실행"
+            activity.artifacts.any { it.media != null } -> "미디어 첨부"
+            else -> "활동 기록"
+        })
 
 /**
  * 에이전트가 생성한 단계별 계획(`ExecutionPlan`) 스테퍼 카드입니다.

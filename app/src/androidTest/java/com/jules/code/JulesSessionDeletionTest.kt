@@ -19,6 +19,28 @@ class JulesSessionDeletionTest {
     @get:Rule
     val composeRule = createComposeRule()
 
+    /** 좁은 화면에서도 조회 실패를 0건으로 오인하지 않고 로딩과 성공으로 전환합니다. */
+    @Test
+    fun keySyncStatusShowsLoadingFailureAndRecovery() {
+        val status = androidx.compose.runtime.mutableStateOf<com.jules.code.ui.ApiKeySyncStatus?>(null)
+        composeRule.setContent {
+            JulesTheme {
+                ProvideJulesLocalization(langPref = "ko") {
+                    Box(Modifier.width(320.dp)) {
+                        com.jules.code.ui.screens.ApiKeySyncStatusText(status.value)
+                    }
+                }
+            }
+        }
+        composeRule.onNodeWithText("아직 조회하지 않음").assertIsDisplayed()
+        composeRule.runOnIdle { status.value = com.jules.code.ui.ApiKeySyncStatus(loading = true) }
+        composeRule.onNodeWithText("세션 조회 중…").assertIsDisplayed()
+        composeRule.runOnIdle { status.value = com.jules.code.ui.ApiKeySyncStatus(error = "인증 오류") }
+        composeRule.onNodeWithText("조회 실패(기존 캐시 표시): 인증 오류").assertIsDisplayed()
+        composeRule.runOnIdle { status.value = com.jules.code.ui.ApiKeySyncStatus(updatedAt = 1L) }
+        composeRule.onNodeWithText("동기화 완료", substring = true).assertIsDisplayed()
+    }
+
     /** 320dp 카드에서도 삭제 버튼이 보이고 확인 전에는 삭제하지 않습니다. */
     @Test
     fun stalledSummaryShowsDeleteAndRequiresConfirmation() {

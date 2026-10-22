@@ -512,6 +512,7 @@ fun SettingsScreen(viewModel: JulesViewModel) {
     val apiKeys by viewModel.apiKeys.collectAsState()
     val activeKey by viewModel.activeApiKey.collectAsState()
     val apiKeyUsages by viewModel.apiKeyUsages.collectAsState()
+    val apiKeySyncStatuses by viewModel.apiKeySyncStatuses.collectAsState()
     val sessions by viewModel.sessions.collectAsState()
     val prefs by viewModel.preferences.collectAsState()
 
@@ -1035,6 +1036,7 @@ fun SettingsScreen(viewModel: JulesViewModel) {
                                     }
                                 }
 
+                                ApiKeySyncStatusText(apiKeySyncStatuses[item.id])
                                 // API 키별 실시간 작업 소모량(24h 소모/한도, 동시 실행 슬롯, 누적/완료 세션) 표시 바
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     LinearProgressIndicator(
@@ -1059,8 +1061,8 @@ fun SettingsScreen(viewModel: JulesViewModel) {
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 11.sp,
                                         color = JulesTextPrimary,
-                                        maxLines = 1,
-                                        softWrap = false,
+                                        maxLines = 2,
+                                        softWrap = true,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     if (itemStalled > 0) {

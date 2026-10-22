@@ -15,8 +15,8 @@ android {
         minSdk = 26
         // ponytail: Android 14/15 기기에서 사이드로딩 시 targetSdk 35 제한 및 Play Protect 경고를 피하기 위해 targetSdk 34 설정 (compileSdk 35 유지)
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.2.1"
         base.archivesName.set("Jules Code")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

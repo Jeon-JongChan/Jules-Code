@@ -95,6 +95,10 @@ data class CachedSessionActivitiesEntity(
     val updatedAt: Long = System.currentTimeMillis()
 )
 
+/** 동일 계정의 여러 API 키가 같은 세션을 조회할 때 각 소속을 보존합니다. */
+@Entity(tableName = "cached_session_keys", primaryKeys = ["sessionId", "apiKeyId"])
+data class CachedSessionKeyEntity(val sessionId: String, val apiKeyId: Long)
+
 /**
  * Jules 로컬 데이터를 관리하는 통합 Room DAO 인터페이스입니다.
  */
@@ -160,14 +164,44 @@ interface JulesDao {
     }
 
     // --- Cached Sessions ---
-    @Query("SELECT * FROM cached_sessions ORDER BY isPinned DESC, updateTime DESC, createTime DESC")
+    @Query("SELECT s.sessionId, s.name, s.title, s.prompt, s.state, s.repoDisplay, s.branchDisplay, s.prUrl, s.prTitle, s.createTime, s.updateTime, s.isPinned, k.apiKeyId, s.lastActivityTime, s.lastOriginator, s.unansweredUserCount, s.currentStepTitle, s.completedStepsCount, s.totalStepsCount FROM cached_sessions s JOIN cached_session_keys k ON s.sessionId = k.sessionId ORDER BY s.isPinned DESC, s.updateTime DESC, s.createTime DESC")
     fun observeSessions(): Flow<List<CachedSessionEntity>>
 
     @Query("SELECT * FROM cached_sessions WHERE sessionId = :sessionId LIMIT 1")
     suspend fun getCachedSession(sessionId: String): CachedSessionEntity?
 
+    /** 세션 내용과 모든 조회 키의 소속을 원자적으로 보존합니다. */
+    @Transaction
+    suspend fun upsertSessions(items: List<CachedSessionEntity>) {
+        upsertSessionRows(items)
+        clearLegacySessionKeys(items.filter { it.apiKeyId > 0L }.map { it.sessionId })
+        upsertSessionKeys(items.map { CachedSessionKeyEntity(it.sessionId, it.apiKeyId) })
+    }
+
+    /** 실제 키가 확인된 이전 버전의 미지정 소속은 중복 표시되지 않게 정리합니다. */
+    @Query("DELETE FROM cached_session_keys WHERE apiKeyId = 0 AND sessionId IN (:sessionIds)")
+    suspend fun clearLegacySessionKeys(sessionIds: List<String>)
+
+    /** 성공한 전체 목록만 교체하여 서버에서 사라진 세션의 소속도 갱신합니다. */
+    @Transaction
+    suspend fun replaceSessionsForApiKey(apiKeyId: Long, items: List<CachedSessionEntity>) {
+        require(items.all { it.apiKeyId == apiKeyId }) { "세션 소속 키가 일치하지 않습니다." }
+        deleteKeyMemberships(apiKeyId)
+        upsertSessions(items)
+        deleteUnownedSessions()
+    }
+
+    /** 소속과 별도로 세션의 최신 내용을 저장합니다. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertSessions(items: List<CachedSessionEntity>)
+    suspend fun upsertSessionRows(items: List<CachedSessionEntity>)
+
+    /** 다른 키의 기존 소속은 유지하면서 조회 키를 추가합니다. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertSessionKeys(items: List<CachedSessionKeyEntity>)
+
+    /** 원격에서 삭제한 세션의 모든 키 소속을 정리합니다. */
+    @Query("DELETE FROM cached_session_keys WHERE sessionId = :sessionId")
+    suspend fun deleteSessionKeys(sessionId: String)
 
     @Query("DELETE FROM cached_sessions WHERE sessionId = :sessionId")
     suspend fun deleteCachedSession(sessionId: String)
@@ -175,12 +209,25 @@ interface JulesDao {
     /** 세션과 해당 활동 캐시를 하나의 트랜잭션으로 제거합니다. */
     @Transaction
     suspend fun deleteSessionCache(sessionId: String) {
+        deleteSessionKeys(sessionId)
         deleteCachedActivities(sessionId)
         deleteCachedSession(sessionId)
     }
 
-    @Query("DELETE FROM cached_sessions WHERE apiKeyId = :apiKeyId")
-    suspend fun deleteSessionsByApiKey(apiKeyId: Long)
+    /** 키 삭제는 다른 키에서 조회 가능한 공유 세션을 유지합니다. */
+    @Transaction
+    suspend fun deleteSessionsByApiKey(apiKeyId: Long) {
+        deleteKeyMemberships(apiKeyId)
+        deleteUnownedSessions()
+    }
+
+    /** 삭제한 프로필에 해당하는 소속만 제거합니다. */
+    @Query("DELETE FROM cached_session_keys WHERE apiKeyId = :apiKeyId")
+    suspend fun deleteKeyMemberships(apiKeyId: Long)
+
+    /** 어떤 키에도 속하지 않는 세션 캐시만 정리합니다. */
+    @Query("DELETE FROM cached_sessions WHERE sessionId NOT IN (SELECT sessionId FROM cached_session_keys)")
+    suspend fun deleteUnownedSessions()
 
     @Query("UPDATE cached_sessions SET isPinned = :pinned WHERE sessionId = :sessionId")
     suspend fun setSessionPinned(sessionId: String, pinned: Boolean)
@@ -243,9 +290,10 @@ interface JulesDao {
         CachedSourceEntity::class,
         ScheduledTemplateEntity::class,
         AppPreferenceEntity::class,
-        CachedSessionActivitiesEntity::class
+        CachedSessionActivitiesEntity::class,
+        CachedSessionKeyEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class JulesDatabase : RoomDatabase() {
@@ -254,6 +302,15 @@ abstract class JulesDatabase : RoomDatabase() {
     companion object {
         @Volatile
         private var INSTANCE: JulesDatabase? = null
+
+        /** 기존 세션을 유지하면서 다중 키 소속 테이블을 초기화합니다. */
+        internal val MIGRATION_3_4 = object : Migration(3, 4) {
+            /** 기존 캐시의 소속을 그대로 이관합니다. */
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS cached_session_keys (sessionId TEXT NOT NULL, apiKeyId INTEGER NOT NULL, PRIMARY KEY(sessionId, apiKeyId))")
+                db.execSQL("INSERT INTO cached_session_keys (sessionId, apiKeyId) SELECT sessionId, apiKeyId FROM cached_sessions")
+            }
+        }
 
         /** 버전 1 -> 2 마이그레이션: 세션 액티비티 0ms 즉시 렌더링용 캐시 테이블 추가 */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -295,7 +352,7 @@ abstract class JulesDatabase : RoomDatabase() {
                     JulesDatabase::class.java,
                     "jules_code_app.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

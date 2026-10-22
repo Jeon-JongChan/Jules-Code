@@ -200,5 +200,9 @@
     <string name="source_refresh">저장소 브랜치 새로고침</string>
     <string name="jules_web_features">Jules 웹 기능</string>
     <string name="jules_web_features_desc">예약 실행·추천 작업·저장소 VM 설정은 Jules 웹에서 관리합니다. 작업 일시정지·재개와 수동 게시도 상세 화면의 웹에서 열기로 이용할 수 있습니다.</string>
+    <string name="key_sync_loading">세션 조회 중…</string>
+    <string name="key_sync_pending">아직 조회하지 않음</string>
+    <string name="key_sync_success">%1$s 동기화 완료</string>
+    <string name="key_sync_error">조회 실패(기존 캐시 표시): %1$s</string>
 </resources>
 

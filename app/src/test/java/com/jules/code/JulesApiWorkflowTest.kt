@@ -22,6 +22,130 @@ import org.junit.Test
 
 /** 로컬 HTTP 서버로 페이지 누락, 활동 단건 조회와 취소 전파를 재현합니다. */
 class JulesApiWorkflowTest {
+    /** 목록만 열 때는 단건 본문을 요청하지 않고 펼친 활동만 조회한 뒤 재사용합니다. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun activityBodyLoadsOnlyOnDemandAndIsCached() = runBlocking {
+        Dispatchers.setMain(Dispatchers.Unconfined)
+        val bodies = java.util.concurrent.atomic.AtomicInteger()
+        val store = ViewModelStore()
+        val rows = MutableStateFlow(emptyList<CachedSessionEntity>())
+        try {
+            LocalApiServer { _, uri ->
+                val body = when {
+                    uri.substringBefore('?').endsWith("/activities/a1") -> { bodies.incrementAndGet(); """{"id":"a1","agentMessaged":{"message":"활동 본문"}}""" }
+                    uri.substringBefore('?').endsWith("/activities") -> """{"activities":[{"id":"a1","description":"활동 제목"}]}"""
+                    uri.substringBefore('?').endsWith("/sessions/s1") -> """{"id":"s1","state":"COMPLETED"}"""
+                    uri.substringBefore('?').endsWith("/sessions") -> """{"sessions":[{"id":"s1","state":"COMPLETED"}]}"""
+                    else -> "{}"
+                }
+                200 to body
+            }.use { server ->
+                val key = ApiKeyEntity(1, "테스트", "test", true)
+                val dao = Proxy.newProxyInstance(JulesDao::class.java.classLoader, arrayOf(JulesDao::class.java)) { _, method, args ->
+                    when (method.name) {
+                        "observeApiKeys" -> MutableStateFlow(listOf(key))
+                        "observeActiveApiKey" -> MutableStateFlow(key)
+                        "observeSessions" -> rows
+                        "observeTemplates" -> MutableStateFlow(emptyList<ScheduledTemplateEntity>())
+                        "observeSources" -> MutableStateFlow(emptyList<CachedSourceEntity>())
+                        "observePreferences" -> MutableStateFlow(emptyList<AppPreferenceEntity>())
+                        "insertTemplate" -> 1L
+                        "replaceSessionsForApiKey" -> { rows.value = args!![1] as List<CachedSessionEntity>; Unit }
+                        "upsertSessions" -> { rows.value = args!![0] as List<CachedSessionEntity>; Unit }
+                        "getCachedSession" -> rows.value.firstOrNull()
+                        "getCachedActivities" -> null
+                        "upsertCachedActivities", "replaceSources", "clearSources" -> Unit
+                        else -> error("예상하지 못한 DAO 호출: ${method.name}")
+                    }
+                } as JulesDao
+                val vm = JulesViewModel(dao, JulesApiClient("http://127.0.0.1:${server.port}/v1alpha"))
+                store.put("lazy", vm)
+                withTimeout(5000) { rows.first { it.isNotEmpty() } }
+                vm.openSession("s1")
+                withTimeout(5000) { vm.activities.first { it.isNotEmpty() } }
+                assertEquals(0, bodies.get())
+                vm.refreshActivity("s1", "a1")
+                withTimeout(5000) { vm.activities.first { it.singleOrNull()?.detailsLoaded == true } }
+                assertEquals("활동 본문", vm.activities.value.single().resolvedAgentMessage)
+                vm.refreshActivity("s1", "a1")
+                withTimeout(5000) { vm.loadingActivityIds.first { it.isEmpty() } }
+                assertEquals(1, bodies.get())
+            }
+        } finally { store.clear(); Dispatchers.resetMain() }
+    }
+
+    /** 개별 조회의 긴 패치와 첨부는 파일에 원문 그대로 남고 메모리 응답은 작게 유지됩니다. */
+    @Test
+    fun individualActivityPreservesFullContentInFiles() {
+        val api = JulesApiClient()
+        val patch = "가\n\"인용\"😀".repeat(100000) + "마지막 원문"
+        val media = "YQ==".repeat(200000)
+        val raw = """{"id":"one","artifacts":[{"changeSet":{"gitPatch":{"unidiffPatch":${kotlinx.serialization.json.JsonPrimitive(patch)}}}},{"media":{"mimeType":"video/mp4","data":"$media"}}]}"""
+        val compact = api.readActivitiesBounded(java.io.ByteArrayInputStream(raw.toByteArray()), saveContent = true)
+        assertTrue(compact.length < 70 * 1024)
+        val obj = api.json.parseToJsonElement(compact) as kotlinx.serialization.json.JsonObject
+        val files = obj["contentFiles"] as kotlinx.serialization.json.JsonObject
+        val path = (files.values.single() as kotlinx.serialization.json.JsonPrimitive).content
+        assertEquals(patch, java.io.File(path).readText(Charsets.UTF_16LE))
+        val tail = com.jules.code.ui.readTextFilePage(path, (patch.length - 100).toLong())
+        assertTrue(tail.first.endsWith("마지막 원문"))
+        val parsed = api.parseActivitiesFlexible("""{"activities":[$compact]}""").activities.single()
+        assertEquals(media, java.io.File(parsed.artifacts.last().media!!.dataFile).readText(Charsets.UTF_8))
+    }
+
+    /** 큰 첨부와 패치가 함께 있어도 모든 활동과 정상 메시지는 보존하고 문자열만 제한합니다. */
+    @Test
+    fun hugeActivityFieldsAreStreamedIntoBoundedPreviews() {
+        val api = JulesApiClient()
+        val large = "A".repeat(2 * 1024 * 1024)
+        val raw = """{"activities":[{"id":"old","agentMessaged":{"message":"이전 작업"},"artifacts":[{"media":{"mimeType":"video/mp4","data":"$large"}},{"changeSet":{"gitPatch":{"unidiffPatch":"$large"}}}]},{"id":"new","userMessaged":{"message":"인용: \"확인\"\n다음 줄"}}]}"""
+        val compact = api.readActivitiesBounded(java.io.ByteArrayInputStream(raw.toByteArray()))
+        assertTrue(compact.length < 70 * 1024)
+        val activities = api.parseActivitiesFlexible(compact).activities
+        assertEquals(listOf("old", "new"), activities.map { it.id })
+        assertEquals("이전 작업", activities.first().resolvedAgentMessage)
+        assertEquals("", activities.first().artifacts.first().media?.data)
+        assertTrue(activities.first().artifacts.last().changeSet?.gitPatch?.unidiffPatch.orEmpty().contains("원문 보기"))
+        assertEquals("인용: \"확인\"\n다음 줄", activities.last().resolvedUserMessage)
+    }
+
+    /** 화면이 키 목록을 구독하기 전에도 비활성 키까지 최초 동기화합니다. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun initialRefreshIncludesKeysWithoutUiSubscribers() = runBlocking {
+        Dispatchers.setMain(Dispatchers.Unconfined)
+        val requests = java.util.concurrent.atomic.AtomicInteger()
+        val store = ViewModelStore()
+        try {
+            LocalApiServer { _, uri ->
+                if (uri.substringBefore('?').endsWith("/sessions")) requests.incrementAndGet()
+                200 to "{}"
+            }.use { server ->
+                val keys = listOf(ApiKeyEntity(1, "첫 키", "one", true), ApiKeyEntity(2, "다른 키", "two"))
+                val dao = Proxy.newProxyInstance(JulesDao::class.java.classLoader, arrayOf(JulesDao::class.java)) { _, method, _ ->
+                    when (method.name) {
+                        "observeApiKeys" -> MutableStateFlow(keys)
+                        "observeActiveApiKey" -> MutableStateFlow(keys.first())
+                        "observeSessions" -> MutableStateFlow(emptyList<CachedSessionEntity>())
+                        "observeTemplates" -> MutableStateFlow(emptyList<ScheduledTemplateEntity>())
+                        "observeSources" -> MutableStateFlow(emptyList<CachedSourceEntity>())
+                        "observePreferences" -> MutableStateFlow(emptyList<AppPreferenceEntity>())
+                        "insertTemplate" -> 1L
+                        "upsertSessions", "replaceSessionsForApiKey", "replaceSources", "clearSources" -> Unit
+                        else -> error("예상하지 못한 DAO 호출: ${method.name}")
+                    }
+                } as JulesDao
+                store.put("initial", JulesViewModel(dao, JulesApiClient("http://127.0.0.1:${server.port}/v1alpha")))
+                withTimeout(3000) { while (requests.get() < 2) kotlinx.coroutines.delay(10) }
+                assertEquals(2, requests.get())
+            }
+        } finally {
+            store.clear()
+            Dispatchers.resetMain()
+        }
+    }
+
     /** 선택 필드가 null인 응답도 없는 값으로 처리하여 가짜 다음 페이지를 요청하지 않습니다. */
     @Test
     fun nullableActivityFieldsDoNotBreakTimeline() {
@@ -129,7 +253,7 @@ class JulesApiWorkflowTest {
                         deletedActivities = true
                         Unit
                     }
-                    "upsertSessions", "replaceSources", "clearSources" -> Unit
+                    "upsertSessions", "replaceSessionsForApiKey", "replaceSources", "clearSources" -> Unit
                     else -> error("예상하지 못한 DAO 호출: ${method.name}")
                 }
             } as JulesDao

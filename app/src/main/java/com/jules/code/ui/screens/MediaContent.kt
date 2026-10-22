@@ -25,11 +25,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.FileInputStream
+import java.io.InputStream
 import java.security.MessageDigest
 
 /** MIME별 미디어를 비동기로 준비하고 영상은 재생 요청 시에만 디코딩합니다. */
 @Composable
 fun MediaContent(media: MediaArtifact) {
+    // 대용량 목록은 미디어 본문을 지연 조회하므로 빈 데이터를 디코딩하지 않습니다.
+    if (media.data.isBlank() && media.dataFile.isBlank()) {
+        Text("미디어 첨부 · ${media.mimeType}\n활동을 새로고침해 첨부를 불러와 주세요.")
+        return
+    }
     val context = LocalContext.current
     val video = media.mimeType.startsWith("video/", ignoreCase = true)
     val image = media.mimeType.startsWith("image/", ignoreCase = true)
@@ -54,28 +61,27 @@ fun MediaContent(media: MediaArtifact) {
         if (!image && !(video && requested)) return@LaunchedEffect
         try {
             withContext(Dispatchers.IO) {
-                // ponytail: 첨부당 인코딩 64MiB 상한. 더 큰 미디어는 스트리밍 API 도입 시 지원합니다.
+                // 인라인 첨부에만 상한을 두고 큰 첨부는 파일 스트림으로 처리합니다.
                 val limit = (if (image) 16 else 64) * 1024 * 1024
-                require(media.data.length <= limit) { "첨부가 너무 큽니다. 더 작은 이미지·영상으로 요청해 주세요." }
+                require(media.dataFile.isNotBlank() || media.data.length <= limit) { "첨부를 다시 불러와 주세요." }
                 val payload = if (media.data.startsWith("data:")) media.data.substringAfter(',') else media.data
                 if (image) {
-                    val bytes = Base64.decode(payload, Base64.DEFAULT)
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                    decodedMediaStream(media).use { BitmapFactory.decodeStream(it, null, bounds) }
                     require(bounds.outWidth > 0 && bounds.outHeight > 0) { "이미지 형식을 읽을 수 없습니다." }
                     val options = BitmapFactory.Options().apply { inSampleSize = 1 }
                     while (bounds.outWidth / options.inSampleSize > 2048 || bounds.outHeight / options.inSampleSize > 2048) {
                         options.inSampleSize *= 2
                     }
-                    val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+                    val decoded = decodedMediaStream(media).use { BitmapFactory.decodeStream(it, null, options) }
                     requireNotNull(decoded) { "이미지를 디코딩할 수 없습니다." }
                     bitmap = decoded.asImageBitmap()
                 } else {
-                    val digest = MessageDigest.getInstance("SHA-256").digest(payload.toByteArray(Charsets.US_ASCII))
+                    val digest = MessageDigest.getInstance("SHA-256").digest((media.dataFile.ifBlank { payload }).toByteArray(Charsets.UTF_8))
                         .joinToString("") { "%02x".format(it) }
                     val file = File(context.cacheDir, "media-$digest.video")
                     // 중단된 쓰기 파일을 재사용하지 않도록 매 요청마다 완전히 기록합니다.
-                    Base64InputStream(ByteArrayInputStream(payload.toByteArray(Charsets.US_ASCII)), Base64.DEFAULT).use { input ->
+                    decodedMediaStream(media).use { input ->
                         file.outputStream().use { input.copyTo(it) }
                     }
                     require(file.length() > 0) { "영상 데이터가 비어 있거나 잘못된 Base64입니다." }
@@ -120,4 +126,11 @@ fun MediaContent(media: MediaArtifact) {
         }
     }
     if (zoom && bitmap != null) ImageZoomDialog(bitmap!!, "첨부 이미지", onDismiss = { zoom = false })
+}
+
+/** 파일에 저장한 큰 Base64 첨부도 바이트 배열 복사 없이 디코딩합니다. */
+private fun decodedMediaStream(media: MediaArtifact): InputStream {
+    val source = if (media.dataFile.isNotBlank()) FileInputStream(media.dataFile)
+    else ByteArrayInputStream((if (media.data.startsWith("data:")) media.data.substringAfter(',') else media.data).toByteArray(Charsets.US_ASCII))
+    return Base64InputStream(source, Base64.DEFAULT)
 }

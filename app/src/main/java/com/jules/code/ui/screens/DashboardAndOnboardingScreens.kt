@@ -242,6 +242,7 @@ fun DashboardScreen(
     val activeKey by viewModel.activeApiKey.collectAsState()
     val apiKeys by viewModel.apiKeys.collectAsState()
     val apiKeyUsages by viewModel.apiKeyUsages.collectAsState()
+    val apiKeySyncStatuses by viewModel.apiKeySyncStatuses.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isDemo by viewModel.isDemoMode.collectAsState()
 
@@ -356,6 +357,7 @@ fun DashboardScreen(
                 concurrentLimit = currentTier.concurrentLimit,
                 allKeys = apiKeys,
                 usages = apiKeyUsages,
+                syncStatuses = apiKeySyncStatuses,
                 onSwitchKey = { viewModel.switchApiKey(it) },
                 onCycleTier = {
                     val nextTier = when (currentTier.code) {
@@ -1031,6 +1033,7 @@ fun QuotaRemainingBanner(
     concurrentLimit: Int,
     allKeys: List<ApiKeyEntity> = emptyList(),
     usages: Map<Long, ApiKeyUsageSummary> = emptyMap(),
+    syncStatuses: Map<Long, com.jules.code.ui.ApiKeySyncStatus> = emptyMap(),
     onSwitchKey: (Long) -> Unit = {},
     onCycleTier: () -> Unit
 ) {
@@ -1166,7 +1169,7 @@ fun QuotaRemainingBanner(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     allKeys.forEach { key ->
-                        val isSelected = key.label == keyLabel
+                        val isSelected = key.isActive
                         val usage = usages[key.id]
                         Surface(
                             onClick = { onSwitchKey(key.id) },
@@ -1213,6 +1216,7 @@ fun QuotaRemainingBanner(
                                         )
                                     }
                                 }
+                                ApiKeySyncStatusText(syncStatuses[key.id])
                             }
                         }
                     }

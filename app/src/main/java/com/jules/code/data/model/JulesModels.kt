@@ -253,7 +253,9 @@ data class JulesActivity(
     val progressUpdated: ProgressUpdatedEvent? = null,
     val sessionCompleted: SessionCompletedEvent? = null,
     val sessionFailed: SessionFailedEvent? = null,
-    val artifacts: List<ActivityArtifact> = emptyList()
+    val artifacts: List<ActivityArtifact> = emptyList(),
+    val detailsLoaded: Boolean = false,
+    val contentFiles: Map<String, String> = emptyMap()
 ) {
     /**
      * 사용자 메시지 내용을 추출합니다 (스키마 변형 모두 호환).
@@ -400,6 +402,7 @@ data class BashOutputArtifact(
 @Serializable
 data class MediaArtifact(
     val mimeType: String = "",
-    val data: String = ""
+    val data: String = "",
+    val dataFile: String = ""
 )
 

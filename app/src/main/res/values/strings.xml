@@ -200,4 +200,8 @@
     <string name="source_refresh">Refresh repository branches</string>
     <string name="jules_web_features">Jules web features</string>
     <string name="jules_web_features_desc">Manage scheduled tasks, suggested tasks, and repository VM settings in Jules web. Open a session on the web to pause, resume, or manually publish changes.</string>
+    <string name="key_sync_loading">Loading sessions…</string>
+    <string name="key_sync_pending">Not synced yet</string>
+    <string name="key_sync_success">Synced %1$s</string>
+    <string name="key_sync_error">Sync failed (cached data): %1$s</string>
 </resources>

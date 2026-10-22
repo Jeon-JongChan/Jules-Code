@@ -19,6 +19,11 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.io.ByteArrayInputStream
+import java.io.SequenceInputStream
+import java.io.InputStream
+import java.io.ByteArrayOutputStream
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -29,7 +34,8 @@ import kotlin.coroutines.coroutineContext
  * 외부 무거운 HTTP 라이브러리 대신 표준 `HttpURLConnection`과 `kotlinx.serialization`을 사용합니다.
  */
 class JulesApiClient(
-    private val baseUrl: String = "https://jules.googleapis.com/v1alpha"
+    private val baseUrl: String = "https://jules.googleapis.com/v1alpha",
+    private val contentDirectory: File = File(System.getProperty("java.io.tmpdir"), "jules-activity-content")
 ) {
     /**
      * 알 수 없는 필드나 스키마 확장에 유연하게 대응하는 JSON 파서 인스턴스입니다.
@@ -128,7 +134,7 @@ class JulesApiClient(
     }
 
     /**
-     * 세션 내 액티비티(계획, 메시지, 코드 패치, 명령 실행 로그) 목록을 조회합니다.
+     * 세션 활동 요약을 조회하며 본문과 첨부는 선택 시 getActivity로 불러옵니다.
      * (`GET /v1alpha/sessions/{sessionId}/activities`)
      */
     suspend fun listActivities(
@@ -142,9 +148,22 @@ class JulesApiClient(
             add("pageSize=$pageSize")
             if (!pageToken.isNullOrBlank()) add("pageToken=${encode(pageToken)}")
         }.joinToString("&")
-        val raw = request("GET", "/sessions/$cleanId/activities?$params", apiKey)
+        val summaryFields = "activities(name,id,originator,description,createTime,planGenerated,planApproved,userMessaged,agentMessaged,progressUpdated,sessionCompleted,sessionFailed,artifacts(changeSet(source),bashOutput(command,exitCode),media(mimeType))),nextPageToken"
+        val raw = request("GET", "/sessions/$cleanId/activities?$params&fields=${encode(summaryFields)}", apiKey, activityResponse = true)
         // Base64 미디어가 포함된 큰 JSON은 UI 스레드에서 파싱하지 않습니다.
-        withContext(Dispatchers.Default) { parseActivitiesFlexible(raw) }
+        withContext(Dispatchers.Default) {
+            val parsed = parseActivitiesFlexible(raw)
+            parsed.copy(activities = parsed.activities.map { activity ->
+                activity.copy(detailsLoaded = false, contentFiles = emptyMap(), description = activity.description.take(160),
+                    agentMessaged = activity.agentMessaged?.copy(message = "", agentMessage = "", text = "", prompt = ""),
+                    agentMessage = activity.agentMessage?.copy(message = "", agentMessage = "", text = "", prompt = ""),
+                    progressUpdated = activity.progressUpdated?.copy(description = ""),
+                    artifacts = activity.artifacts.map { it.copy(
+                        changeSet = it.changeSet?.copy(gitPatch = null),
+                        bashOutput = it.bashOutput?.copy(output = ""),
+                        media = it.media?.copy(data = "", dataFile = "")) })
+            })
+        }
     }
 
     /** 모든 세션 페이지를 가져와 이전 작업이 목록에서 누락되지 않게 합니다. */
@@ -161,17 +180,20 @@ class JulesApiClient(
         }
     }
 
-    /** 계획·최신 메시지·산출물이 잘리지 않도록 활동의 전체 페이지를 가져옵니다. */
+    /** 이전 기록이 빠지지 않도록 활동 요약의 마지막 페이지까지 가져옵니다. */
     suspend fun listAllActivities(apiKey: String, sessionId: String): Result<List<JulesActivity>> = collectPages { token ->
         listActivities(apiKey, sessionId, pageToken = token).getOrThrow().let {
             it.activities to it.nextPageToken
         }
     }
 
-    /** 활동 하나를 다시 조회하며 목록과 동일한 호환 파서를 사용합니다. */
+    /** 선택한 활동의 전체 본문을 조회하고 큰 원문·첨부는 파일에 보존합니다. */
     suspend fun getActivity(apiKey: String, sessionId: String, activityId: String): Result<JulesActivity> = apiResult {
-        val raw = request("GET", "/sessions/${sessionId.substringAfterLast('/')}/activities/${activityId.substringAfterLast('/')}", apiKey)
-        parseSingleActivity(json.parseToJsonElement(raw).jsonObject)
+        val raw = request("GET", "/sessions/${sessionId.substringAfterLast('/')}/activities/${activityId.substringAfterLast('/')}", apiKey,
+            activityResponse = true, saveContent = true)
+        withContext(Dispatchers.Default) {
+            parseSingleActivity(json.parseToJsonElement(raw).jsonObject).copy(detailsLoaded = true)
+        }
     }
 
     /** 실패한 중간 페이지는 부분 성공으로 처리하지 않고 반복 토큰은 차단합니다. */
@@ -254,7 +276,8 @@ class JulesApiClient(
             val media = mediaObj?.let { mo ->
                 MediaArtifact(
                     mimeType = mo["mimeType"]?.jsonPrimitive?.content ?: "",
-                    data = mo["data"]?.jsonPrimitive?.content ?: ""
+                    data = mo["data"]?.jsonPrimitive?.content ?: "",
+                    dataFile = trustedContentFile(mo["dataFile"]?.jsonPrimitive?.content)?.absolutePath.orEmpty()
                 )
             }
             ActivityArtifact(changeSet = changeSet, bashOutput = bashOutput, media = media)
@@ -264,7 +287,15 @@ class JulesApiClient(
         val mutableMap = obj.toMutableMap()
         mutableMap.remove("artifacts")
         val stripped = json.decodeFromJsonElement(JulesActivity.serializer(), JsonObject(mutableMap))
-        return stripped.copy(artifacts = parsedArtifacts)
+        return stripped.copy(artifacts = parsedArtifacts,
+            contentFiles = stripped.contentFiles.filterValues { trustedContentFile(it) != null })
+    }
+
+    /** API 응답이 앱의 원문 캐시 밖 파일을 참조하지 못하게 합니다. */
+    private fun trustedContentFile(path: String?): File? {
+        if (path.isNullOrBlank()) return null
+        val file = File(path).canonicalFile
+        return file.takeIf { it.parentFile == contentDirectory.canonicalFile && it.isFile }
     }
 
     /**
@@ -274,7 +305,9 @@ class JulesApiClient(
         method: String,
         path: String,
         apiKey: String,
-        body: String? = null
+        body: String? = null,
+        activityResponse: Boolean = false,
+        saveContent: Boolean = false
     ): String = withContext(Dispatchers.IO) {
         val trimmedKey = apiKey.trim()
         require(trimmedKey.isNotEmpty()) { "API 키가 설정되지 않았습니다." }
@@ -299,8 +332,14 @@ class JulesApiClient(
             }
             val code = conn.responseCode
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-            val responseText = stream?.let { s ->
-                BufferedReader(InputStreamReader(s, Charsets.UTF_8)).use { it.readText() }
+            val responseText = stream?.use { s ->
+                if (activityResponse && code in 200..299) readActivitiesBounded(s, saveContent)
+                else {
+                    // 단건 첨부를 포함한 응답도 무제한 문자열로 확장하지 않습니다.
+                    val bytes = readAtMost(s, 8 * 1024 * 1024 + 1)
+                    require(bytes.size <= 8 * 1024 * 1024) { "목록 응답이 너무 큽니다. 새로고침해 다시 시도해 주세요." }
+                    bytes.toString(Charsets.UTF_8)
+                }
             } ?: ""
 
             if (code !in 200..299) {
@@ -310,6 +349,130 @@ class JulesApiClient(
         } finally {
             conn.disconnect()
         }
+    }
+
+    /** 목록은 작게 유지하고 개별 원문은 파일로 흘려보내며 표시 구간만 반환합니다. */
+    internal fun readActivitiesBounded(input: InputStream, saveContent: Boolean = false): String {
+        val prefix = readAtMost(input, 512 * 1024 + 1)
+        if (prefix.size <= 512 * 1024 && !saveContent) return prefix.toString(Charsets.UTF_8)
+        val combined = SequenceInputStream(ByteArrayInputStream(prefix), input)
+        return compactActivityJson(InputStreamReader(combined, Charsets.UTF_8).buffered(), saveContent)
+    }
+
+    /** Android 8에서도 지정한 바이트까지만 버퍼링합니다. */
+    private fun readAtMost(input: InputStream, limit: Int): ByteArray {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        while (output.size() < limit) {
+            val count = input.read(buffer, 0, minOf(buffer.size, limit - output.size()))
+            if (count < 0) break
+            output.write(buffer, 0, count)
+        }
+        return output.toByteArray()
+    }
+
+    /** JSON 문자열을 토큰 경계에서 제한해 큰 패치·로그도 전체 문자열로 할당하지 않습니다. */
+    private fun compactActivityJson(reader: java.io.Reader, saveContent: Boolean): String {
+        val output = StringBuilder()
+        val files = mutableMapOf<String, String>()
+        var previous = ' '
+        var lastToken = ""
+        while (true) {
+            val next = reader.read()
+            if (next < 0) break
+            val char = next.toChar()
+            if (char != '"') {
+                output.append(char)
+                if (!char.isWhitespace()) previous = char
+            } else {
+                val omit = previous == ':' && lastToken == "data"
+                val field = lastToken
+                val persist = saveContent && previous == ':'
+                var file: File? = null
+                var writer: java.io.BufferedWriter? = null
+                val pending = StringBuilder()
+                /** 실제로 큰 값만 파일로 전환하고 앞서 읽은 원문도 함께 보존합니다. */
+                fun openContentFile() {
+                    contentDirectory.mkdirs()
+                    val created = File.createTempFile("content-", ".${if (omit) "base64" else "text"}", contentDirectory)
+                    file = created
+                    writer = created.bufferedWriter(if (omit) Charsets.UTF_8 else Charsets.UTF_16LE)
+                    writer!!.append(pending)
+                    pending.setLength(0)
+                }
+                /** 작은 값은 짧은 버퍼에 두고 큰 원문은 고정 크기 쓰기 버퍼로 흘려보냅니다. */
+                fun persistChar(char: Char) {
+                    if (!persist) return
+                    if (writer != null) writer!!.append(char)
+                    else {
+                        pending.append(char)
+                        if (omit || pending.length > 64 * 1024) openContentFile()
+                    }
+                }
+                val token = StringBuilder()
+                var length = 0
+                var truncated = false
+                val previewLimit = if (saveContent) 2000 else 64 * 1024
+                output.append('"')
+                try { while (true) {
+                    val value = reader.read()
+                    require(value >= 0) { "활동 응답이 문자열 중간에 끊겼습니다." }
+                    val current = value.toChar()
+                    if (current == '"') break
+                    if (current != '\\') {
+                        persistChar(current)
+                        if (token.length < 64) token.append(current)
+                        if (!omit && !truncated && length < previewLimit) {
+                            output.append(current)
+                            length++
+                        } else if (!omit) truncated = true
+                        continue
+                    }
+                    // 이스케이프와 유니코드 시퀀스는 통째로 유지하거나 통째로 생략합니다.
+                    val unit = StringBuilder().append(current)
+                    if (current == '\\') {
+                        val escaped = reader.read()
+                        require(escaped >= 0) { "활동 응답의 이스케이프가 끊겼습니다." }
+                        unit.append(escaped.toChar())
+                        if (escaped.toChar() == 'u') repeat(4) {
+                            val digit = reader.read()
+                            require(digit >= 0) { "활동 응답의 유니코드가 끊겼습니다." }
+                            unit.append(digit.toChar())
+                        }
+                    }
+                    if (token.length < 64) token.append(unit)
+                    if (persist) {
+                        val decoded = when (unit[1]) {
+                            'u' -> unit.substring(2).toInt(16).toChar()
+                            'n' -> '\n'; 'r' -> '\r'; 't' -> '\t'; 'b' -> '\b'; 'f' -> '\u000C'
+                            else -> unit[1]
+                        }
+                        persistChar(decoded)
+                    }
+                    if (!omit && !truncated && length + unit.length <= previewLimit) {
+                        output.append(unit)
+                        length += unit.length
+                    } else if (!omit) truncated = true
+                }
+                    if (persist && truncated && writer == null) openContentFile()
+                } finally { writer?.close() }
+                if (truncated) output.append("\\n[긴 내용은 원문 보기에서 계속 읽을 수 있습니다.]")
+                output.append('"')
+                if (file != null && (truncated || omit)) {
+                    val path = file!!.absolutePath
+                    output.append(",").append(json.encodeToString(field + "File")).append(":").append(json.encodeToString(path))
+                    if (!omit) files["$field ${files.size + 1}"] = path
+                }
+                lastToken = token.toString()
+                previous = '"'
+            }
+            require(output.length <= 8 * 1024 * 1024) { "활동 목록이 너무 큽니다. 항목을 나누어 다시 조회해 주세요." }
+        }
+        if (files.isNotEmpty()) {
+            val end = output.lastIndexOf("}")
+            output.insert(end, ",\"contentFiles\":" + json.encodeToString(files))
+        }
+        return output.toString()
     }
 
     /**
