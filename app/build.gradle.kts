@@ -1,6 +1,5 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
@@ -15,8 +14,9 @@ android {
         // Play 자동 보호의 최소 SDK 요구사항에 맞춰 Android 7.0 이상을 지원합니다.
         minSdk = 24
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.3.0"
+        // 기존 배포와 구분하여 1.3.1 업데이트를 Play에 등록합니다.
+        versionCode = 7
+        versionName = "1.3.1"
         testInstrumentationRunner = "com.jules.code.PlayUpdateInstrumentation"
         base.archivesName.set("Jules Code")
 
@@ -106,10 +106,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
     }
@@ -125,10 +121,12 @@ android {
     sourceSets {
         getByName("test") {
             java.setSrcDirs(listOf(rootProject.file(".tools/.test/unit/java")))
+            kotlin.setSrcDirs(listOf(rootProject.file(".tools/.test/unit/java")))
             resources.setSrcDirs(listOf(rootProject.file(".tools/.test/unit/resources")))
         }
         getByName("androidTest") {
             java.setSrcDirs(listOf(rootProject.file(".tools/.test/android/java")))
+            kotlin.setSrcDirs(listOf(rootProject.file(".tools/.test/android/java")))
             resources.setSrcDirs(listOf(rootProject.file(".tools/.test/android/resources")))
             assets.setSrcDirs(listOf(rootProject.file(".tools/.test/android/assets")))
             res.setSrcDirs(listOf(rootProject.file(".tools/.test/android/res")))
@@ -145,23 +143,27 @@ android {
         }
     }
 
-    applicationVariants.all {
-        val vName = versionName ?: "1.3.0"
-        outputs.all {
-            (this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl)?.outputFileName =
-                if (buildType.name == "release") "Jules Code-v${vName}.apk" else "Jules Code-v${vName}-${buildType.name}.apk"
-        }
+}
 
-        val apkDirectory = layout.buildDirectory.dir("outputs/apk/$dirName")
-        val distributionDirectory = rootProject.layout.projectDirectory.dir("gradle")
-        assembleProvider.configure {
-            // 성공한 빌드의 최종 파일만 전달하고 원본을 유지해 증분 빌드의 출력 추적을 보존합니다.
+// AGP의 공개 Variant API로 APK 위치를 받아 기존 배포 파일명을 유지합니다.
+androidComponents {
+    onVariants { variant ->
+        val taskSuffix = variant.name.replaceFirstChar { it.uppercase() }
+        val apkDirectory = variant.artifacts.get(com.android.build.api.artifact.SingleArtifact.APK)
+        val versionName = variant.outputs.first().versionName
+        tasks.matching { it.name == "assemble$taskSuffix" }.configureEach {
+            // 원본 APK와 서명 파일은 그대로 두고 배포용 복사본의 이름만 변경합니다.
             doLast {
                 project.copy {
                     from(apkDirectory) {
                         include("*.apk", "*.apk.idsig")
+                        rename { fileName ->
+                            val buildSuffix = if (variant.buildType == "release") "" else "-${variant.name}"
+                            val extension = if (fileName.endsWith(".idsig")) ".apk.idsig" else ".apk"
+                            "Jules Code-v${versionName.get()}$buildSuffix$extension"
+                        }
                     }
-                    into(distributionDirectory)
+                    into(rootProject.layout.projectDirectory.dir("gradle"))
                 }
             }
         }
@@ -204,7 +206,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     // Room (API 키, 세션/소스 캐시, 로컬 프롬프트 템플릿/스케줄 저장)
-    val roomVersion = "2.6.1"
+    // AGP 9 내장 Kotlin과 KSP2에서 데이터베이스 코드를 생성할 수 있는 버전을 사용합니다.
+    val roomVersion = "2.8.5"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
