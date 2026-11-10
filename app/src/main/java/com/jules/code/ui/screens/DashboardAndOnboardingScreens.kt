@@ -41,7 +41,6 @@ import com.jules.code.data.local.ApiKeyEntity
 import com.jules.code.data.local.ScheduledTemplateEntity
 import com.jules.code.data.model.parseActivityTimestamp
 import com.jules.code.ui.ApiKeyUsageSummary
-import com.jules.code.ui.defaultPromptForDraft
 import com.jules.code.ui.JulesViewModel
 import com.jules.code.ui.health.sessionStateLabel
 import com.jules.code.ui.formatLocalTimestamp
@@ -275,11 +274,8 @@ fun DashboardScreen(
         mutableStateOf(selectedSource?.defaultBranch ?: "main")
     }
 
-    val defaultPrompt = remember(prefs) { defaultPromptForDraft(prefs) }
     // 화면 설정 변경 중 작성하던 요청과 실제 작업 옵션을 보존합니다.
     var prompt by rememberSaveable { mutableStateOf("") }
-    // 설정 로딩이 끝나도 사용자가 작성 중인 문장은 덮어쓰지 않습니다.
-    LaunchedEffect(defaultPrompt) { if (prompt.isBlank()) prompt = defaultPrompt }
     // 사용자가 삽입을 선택한 문장도 전송 전에 작성창에서 검토·수정할 수 있습니다.
     val insertPrompt: (String) -> Unit = { addition ->
         prompt = listOf(prompt, addition).filter { it.isNotBlank() }.joinToString("\n\n")
@@ -854,7 +850,7 @@ fun DashboardScreen(
                                 requirePlanApproval = requireApproval,
                                 autoCreatePr = autoCreatePr,
                                 onCreated = { newId ->
-                                    prompt = defaultPrompt
+                                    prompt = ""
                                     taskTitle = ""
                                     showTitleField = false
                                     onOpenSession(newId)
@@ -933,10 +929,10 @@ fun DashboardScreen(
             }
         } else {
             item {
-                Row(
+                // 긴 예약 안내가 추가 버튼의 너비를 빼앗지 않도록 세로로 배치합니다.
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.scheduled_header),
@@ -945,12 +941,18 @@ fun DashboardScreen(
                     )
                     FilledTonalButton(
                         onClick = { showNewTemplateDialog = true },
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.scheduled_add_btn), fontSize = 12.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            stringResource(R.string.scheduled_add_btn),
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }

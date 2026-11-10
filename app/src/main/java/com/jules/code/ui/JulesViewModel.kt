@@ -386,7 +386,7 @@ class JulesViewModel(
 
     /**
      * 새로운 Jules 코딩 세션을 생성합니다.
-     * 사용자가 확인한 프롬프트 원문과 공식 요청 옵션만 전송합니다.
+     * 사용자 입력과 활성화된 기본 요청 문구를 합쳐 공식 요청 옵션과 함께 전송합니다.
      */
     fun createSession(
         prompt: String,
@@ -395,6 +395,7 @@ class JulesViewModel(
         branchName: String?,
         requirePlanApproval: Boolean,
         autoCreatePr: Boolean,
+        includeDefaultPrompt: Boolean = true,
         onCreated: (String) -> Unit = {}
     ) {
         val activeEntity = activeApiKey.value
@@ -411,8 +412,8 @@ class JulesViewModel(
         val currentPrefs = preferences.value
         val langPref = currentPrefs["app_language"]
         val responseLangCode = JulesLocaleManager.resolveLocale(langPref).language
-        // 앱 설정이나 저장소 메모리를 자동 주입하지 않고 입력 원문을 전송합니다.
-        val cleanBasePrompt = prompt
+        // 재시작은 이미 전송한 본문을 재사용하므로 기본 문구를 다시 붙이지 않습니다.
+        val cleanBasePrompt = if (includeDefaultPrompt) promptForSubmission(prompt, currentPrefs) else prompt
 
         viewModelScope.launch {
             _isLoading.value = true
@@ -534,6 +535,7 @@ class JulesViewModel(
             branchName = branchName,
             requirePlanApproval = false,
             autoCreatePr = true,
+            includeDefaultPrompt = false,
             onCreated = onCreated
         )
     }
@@ -769,8 +771,9 @@ class JulesViewModel(
      * 백그라운드로 API 전송 및 고속 폴링을 수행합니다.
      */
     fun sendMessage(sessionId: String, message: String) {
-        val cleanInput = message
-        if (cleanInput.isBlank()) return
+        if (message.isBlank()) return
+        // 타임라인·데모·실제 API가 같은 최종 본문을 사용하도록 전송 전에 한 번 합칩니다.
+        val cleanInput = promptForSubmission(message, preferences.value)
         val key = activeApiKey.value?.apiKey ?: return
         val langCode = JulesLocaleManager.resolveLocale(preferences.value["app_language"]).language
 

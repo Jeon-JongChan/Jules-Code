@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jules.code.R
 import com.jules.code.data.model.*
-import com.jules.code.ui.defaultPromptForDraft
 import com.jules.code.ui.JulesViewModel
 import com.jules.code.ui.formatLocalTimestamp
 import com.jules.code.ui.health.healthDiagnosticTitle
@@ -82,7 +81,6 @@ fun SessionDetailScreen(
     val activityErrors by viewModel.activityErrors.collectAsState()
     val demoMode by viewModel.isDemoMode.collectAsState()
     var expandedActivityIds by remember(session?.sessionId) { mutableStateOf(emptySet<String>()) }
-    val prefs by viewModel.preferences.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isAwaitingResponse by viewModel.isAwaitingResponse.collectAsState()
     val deletingIds by viewModel.deletingSessionIds.collectAsState()
@@ -109,13 +107,8 @@ fun SessionDetailScreen(
     }
 
     var activeTab by rememberSaveable { mutableIntStateOf(0) } // 0: 타임라인, 1: 계획(Plan), 2: 코드 Diff, 3: 터미널(Bash)
-    val defaultPrompt = remember(prefs) { defaultPromptForDraft(prefs) }
     // 세션별 후속 초안도 화면 회전·글꼴 변경으로 유실되지 않도록 복원합니다.
     var messageInput by rememberSaveable(session?.sessionId) { mutableStateOf("") }
-    // 공통 문구도 실제 입력란에만 넣어 수정·삭제 후 전송할 수 있게 합니다.
-    LaunchedEffect(defaultPrompt, session?.sessionId) {
-        if (messageInput.isBlank()) messageInput = defaultPrompt
-    }
     var isSpeaking by remember { mutableStateOf(false) }
 
     // Android 기본 TextToSpeech(TTS)를 활용한 Jules Audio Changelog 구현
@@ -349,7 +342,7 @@ fun SessionDetailScreen(
                         onClick = {
                             val sId = session?.sessionId ?: return@FilledIconButton
                             viewModel.sendMessage(sId, messageInput)
-                            messageInput = defaultPrompt
+                            messageInput = ""
                         },
                         enabled = messageInput.isNotBlank() && session != null && !isAwaitingResponse && !deleting,
                         shape = RoundedCornerShape(12.dp),

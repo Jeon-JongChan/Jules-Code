@@ -53,14 +53,13 @@ API 키가 없어도 데모로 화면과 작업 흐름을 먼저 살펴볼 수 �
 | Google Play 업데이트<br>(Google Play updates) | 새 버전을 자동 또는 수동으로 확인하고, 동의 후 다운로드와 재시작 설치를 진행합니다.<br>(Check for new versions automatically or manually, then download with consent and restart to install.) |
 | 이용량 보기<br>(Usage estimates) | 최근 24시간의 조회된 세션과 선택한 요금제 기준으로 남은 작업량을 추정합니다. 서버의 청구·사용량 원장과 동일한 값은 아닙니다.<br>(Estimate remaining capacity from retrieved sessions in the past 24 hours and the selected plan. These estimates are separate from the server's billing and usage records.) |
 | 재사용 템플릿<br>(Reusable templates) | 자주 쓰는 작업 설명을 저장하고 작성창에 불러옵니다.<br>(Save frequently used task descriptions and load them into the composer.) |
-| 기본 요청 문구<br>(Default request text) | 직접 저장하고 활성화한 문구를 새 작업·후속 채팅 작성창에 미리 넣습니다. 전송 전에 수정하거나 삭제할 수 있습니다.<br>(Prepopulate new task and follow-up drafts with text you explicitly save and enable. Edit or remove it before sending.) |
+| 기본 요청 문구 | 직접 저장하고 활성화한 문구를 새 작업·후속 채팅 전송 시 본문 뒤에 함께 보냅니다. 작성창에는 사용자 입력만 표시하며 공통 문구는 설정에서 관리합니다. |
 | 직접 삽입하는 요청<br>(Explicit instruction insertion) | 검토·CI·모델 선호·저장소 노트를 버튼으로 작성창에 넣습니다. 서버 기능을 켜는 스위치가 아니라 실제 본문에 보이는 요청입니다.<br>(Use buttons to insert review requests, CI instructions, model preferences, and repository notes into the composer. These are visible instructions in the message body rather than server feature switches.) |
 | 지연 진단<br>(Stall diagnostics) | 오랫동안 활동이 없거나 답변이 없는 세션을 구분해 보여주고 재촉·재시작을 돕습니다.<br>(Identify sessions with prolonged inactivity or unanswered messages, with options to nudge or restart them.) |
 | 오디오 요약<br>(Audio summaries) | 기기의 TTS 엔진으로 세션 요약을 들을 수 있습니다. 음성 제공 여부는 기기와 설치된 엔진에 따라 달라집니다.<br>(Listen to session summaries through your device's text-to-speech engine. Voice availability depends on the device and installed engine.) |
 | 오프라인 데모<br>(Offline demo) | 실제 키를 등록하기 전에 작업 시작·계획·대화·코드 보기 흐름을 체험합니다.<br>(Explore task creation, plans, conversations, and code views before registering a real API key.) |
 
-**전송 원칙:** 작성창에 보이는 최종 본문을 그대로 보냅니다. 앱 표시 언어가 에이전트의 답변 언어를 정하지 않으며, 전송 시점에 숨은 언어·모델·미디어 지시를 추가하지 않습니다. 모델 선호 문장을 적어도 실제 모델 선택 가능 여부는 Jules가 결정합니다.<br>
-(**Sending policy:** The final text visible in the composer is sent as written. The app's display language does not determine the agent's reply language, and no hidden language, model, or media instructions are added when sending. Jules determines whether a requested model preference can be honored.)
+**전송 원칙:** 사용자 입력 뒤에 설정에서 저장하고 켠 기본 요청 문구를 붙여 보냅니다. 앱 표시 언어가 에이전트의 답변 언어를 정하지 않습니다. 모델 선호 문장을 적어도 실제 모델 선택 가능 여부는 Jules가 결정합니다.
 
 ## 시작하기 (Getting started)
 
@@ -79,8 +78,9 @@ API 키가 없어도 데모로 화면과 작업 흐름을 먼저 살펴볼 수 �
 5. 세션을 열어 계획을 승인하거나, 후속 채팅과 변경 내용을 확인합니다.<br>
    (Open the session to approve its plan, send follow-up messages, and review changes.)
 
-기본 요청 문구는 **설정 → 기본 요청 문구**에서 직접 작성·저장한 뒤 켭니다. 사용 중인 초안은 설정 변경으로 덮어쓰지 않으며, 새 초안에 저장된 문구를 적용합니다.<br>
-(Write and save your text under **Settings → Default request text**, then enable it. Settings changes leave existing drafts intact; saved text is applied to new drafts.)
+기본 요청 문구는 **설정 → 기본 요청 문구**에서 직접 작성·저장한 뒤 켭니다. 작성창을 채우지 않고 전송 시점의 저장된 문구를 본문 뒤에 붙입니다. 설정에서 끄거나 문구를 비워 저장하면 추가하지 않습니다. 입력이 비어 있을 때는 기본 문구만으로 전송하지 않습니다. 전송한 전체 내용은 타임라인에서 확인할 수 있습니다.
+
+**저장소 노트 삽입**은 선택한 저장소의 설정 스크립트·환경 변수·메모를 작성창에 넣는 기능입니다. 삽입한 내용을 수정한 뒤 요청과 함께 보낼 수 있으며, Jules VM 환경에 직접 적용하는 기능은 아닙니다.
 
 ## Google Play 업데이트 (Google Play updates)
 

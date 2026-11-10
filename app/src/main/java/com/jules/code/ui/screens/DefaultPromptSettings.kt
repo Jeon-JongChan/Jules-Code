@@ -9,7 +9,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jules.code.R
 
-/** 명시적으로 저장하고 활성화한 공통 문구를 새 초안에 표시하는 설정을 제공합니다. */
+/** 작성창에 표시하지 않고 전송할 때 함께 보낼 공통 문구를 저장하고 활성화합니다. */
 @Composable
 fun DefaultPromptSettings(preferences: Map<String, String>, onPreference: (String, String) -> Unit) {
     val savedText = preferences["default_prompt_text"].orEmpty()
