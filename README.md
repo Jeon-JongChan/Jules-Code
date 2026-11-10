@@ -120,12 +120,11 @@ API 키가 없어도 데모로 화면과 작업 흐름을 먼저 살펴볼 수 �
 
 ## Android 호환성 (Android compatibility)
 
-최소 Android 5.0(API 21), 대상 Android 16(API 36)으로 설정했습니다. 날짜 API의 하위 버전 지원과 구형 런처 아이콘을 포함합니다. 기기 제조사별 동작과 지원 음성·영상 코덱은 다를 수 있습니다.<br>
-(The minimum supported version is Android 5.0 / API 21, targeting Android 16 / API 36. Compatibility support includes date APIs on older versions and legacy launcher icons. Behavior and supported audio and video codecs may vary by device manufacturer.)
+Play 자동 보호의 최소 SDK 요구사항에 맞춰 최소 Android 7.0(API 24), 대상 Android 16(API 36)으로 설정했습니다. Android 7.0 미만 기기에는 새 버전을 설치할 수 없습니다. 날짜 API의 하위 버전 지원과 구형 런처 아이콘을 포함합니다. 기기 제조사별 동작과 지원 음성·영상 코덱은 다를 수 있습니다.
 
 | 검증 환경<br>(Test environment) | 확인한 범위<br>(Verified scope) |
 |---|---|
-| Android 5.0(API 21), 에뮬레이터<br>(Android 5.0 / API 21 emulator) | 설치·온보딩·Room 데모 데이터 생성·세션 타임라인<br>(Installation, onboarding, Room demo data creation, and session timeline) |
+| Android 5.0(API 21), 에뮬레이터 — 최소 SDK 변경 전 기록 | 이전 빌드의 설치·온보딩·Room 데모 데이터 생성·세션 타임라인 확인. 현재 버전의 지원 대상에서는 제외 |
 | Android 15(API 35), 에뮬레이터<br>(Android 15 / API 35 emulator) | 설치·온보딩·데모·세션 타임라인·기본 문구 저장과 작성창 표시<br>(Installation, onboarding, demo mode, session timeline, and saving and displaying default request text) |
 | 12개 언어<br>(12 languages) | 실제 설정 메뉴 전환, 기기 언어 복귀, 아랍어 RTL 배치<br>(Language switching in settings, returning to the device language, and Arabic RTL layout) |
 | 360dp 화면, 글꼴 130%, 가로 화면<br>(360dp width, 130% font size, and landscape orientation) | 메뉴 접근, 화면 회전 후 탭과 작성 중인 요청 복원<br>(Menu access and restoration of the selected tab and draft after rotation) |
@@ -133,8 +132,7 @@ API 키가 없어도 데모로 화면과 작업 흐름을 먼저 살펴볼 수 �
 회귀 테스트 21개와 언어 리소스 검사를 통과했습니다. Android Lint는 오류 0개이며 개선 경고가 남아 있습니다. 실제 제조사 기기와 실제 API 키를 사용하는 온라인 작업은 이 검증 범위에 포함되지 않습니다.<br>
 (All 21 regression tests and the language resource check passed. Android Lint reported zero errors, with improvement warnings remaining. This validation does not cover physical devices from manufacturers or online tasks using a real API key.)
 
-[Android 5.0 실제 실행 화면](assets/screenshots/release-20261110/08_session_api21_en.png)에서 하위 버전의 타임라인 표시를 확인할 수 있습니다.<br>
-(See the [actual Android 5.0 screenshot](assets/screenshots/release-20261110/08_session_api21_en.png) for the timeline running on an older Android version.)
+[Android 5.0 실행 화면](assets/screenshots/release-20261110/08_session_api21_en.png)은 최소 SDK를 올리기 전 빌드의 검증 기록입니다. 현재 버전의 Android 7.0 기기 실행 검증은 별도로 필요합니다.
 
 ## 앱과 웹의 역할 (App and web responsibilities)
 

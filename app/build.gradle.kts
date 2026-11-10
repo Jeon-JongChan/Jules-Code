@@ -12,8 +12,8 @@ android {
 
     defaultConfig {
         applicationId = "com.jules.code"
-        // 날짜 API의 역호환 구현과 함께 Android 5.0 이상을 지원합니다.
-        minSdk = 21
+        // Play 자동 보호의 최소 SDK 요구사항에 맞춰 Android 7.0 이상을 지원합니다.
+        minSdk = 24
         targetSdk = 36
         versionCode = 5
         versionName = "1.3.0"
@@ -77,7 +77,17 @@ android {
             }
         }
         release {
-            isMinifyEnabled = false
+            // 사용하지 않는 코드를 제거하고 이름을 난독화합니다.
+            isMinifyEnabled = true
+
+            // 사용하지 않는 리소스를 제거해 앱 크기를 줄입니다.
+            isShrinkResources = true
+
+            ndk {
+                // 추출 가능한 네이티브 디버그 기호를 AAB에 포함합니다.
+                debugSymbolLevel = "FULL"
+            }
+            //isMinifyEnabled = false
             signingConfig = if (relSigning?.storeFile?.exists() == true) {
                 relSigning
             } else {
@@ -158,13 +168,19 @@ android {
     }
 }
 
-// Play Console에 올릴 릴리스 번들도 최종 배포 파일과 같은 위치에서 받습니다.
+// Play Console용 릴리스 번들과 해당 빌드의 가독화 파일을 배포 폴더에 모읍니다.
 tasks.matching { it.name == "bundleRelease" }.configureEach {
     doLast {
         project.copy {
             from(layout.buildDirectory.dir("outputs/bundle/release")) {
                 include("*.aab")
                 rename { "Jules Code-v${android.defaultConfig.versionName}.aab" }
+            }
+            // R8 비활성화 시 이전 빌드의 매핑을 새 번들과 함께 복사하지 않습니다.
+            if (android.buildTypes.getByName("release").isMinifyEnabled) {
+                from(layout.buildDirectory.dir("outputs/mapping/release")) {
+                    include("mapping.txt")
+                }
             }
             into(rootProject.layout.projectDirectory.dir("gradle"))
         }
