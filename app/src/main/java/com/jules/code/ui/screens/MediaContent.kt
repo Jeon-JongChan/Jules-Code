@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import com.jules.code.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -32,12 +33,12 @@ import java.security.MessageDigest
 /** MIME별 미디어를 비동기로 준비하고 영상은 재생 요청 시에만 디코딩합니다. */
 @Composable
 fun MediaContent(media: MediaArtifact) {
+    val context = LocalContext.current
     // 대용량 목록은 미디어 본문을 지연 조회하므로 빈 데이터를 디코딩하지 않습니다.
     if (media.data.isBlank() && media.dataFile.isBlank()) {
-        Text("미디어 첨부 · ${media.mimeType}\n활동을 새로고침해 첨부를 불러와 주세요.")
+        Text(context.getString(R.string.ui_media_reload, media.mimeType))
         return
     }
-    val context = LocalContext.current
     val video = media.mimeType.startsWith("video/", ignoreCase = true)
     val image = media.mimeType.startsWith("image/", ignoreCase = true)
     var requested by remember(media) { mutableStateOf(false) }
@@ -57,24 +58,24 @@ fun MediaContent(media: MediaArtifact) {
             player?.stopPlayback()
         }
     }
-    LaunchedEffect(media, requested) {
+    LaunchedEffect(media, requested, context) {
         if (!image && !(video && requested)) return@LaunchedEffect
         try {
             withContext(Dispatchers.IO) {
                 // 인라인 첨부에만 상한을 두고 큰 첨부는 파일 스트림으로 처리합니다.
                 val limit = (if (image) 16 else 64) * 1024 * 1024
-                require(media.dataFile.isNotBlank() || media.data.length <= limit) { "첨부를 다시 불러와 주세요." }
+                require(media.dataFile.isNotBlank() || media.data.length <= limit) { context.getString(R.string.ui_attachment_reload) }
                 val payload = if (media.data.startsWith("data:")) media.data.substringAfter(',') else media.data
                 if (image) {
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     decodedMediaStream(media).use { BitmapFactory.decodeStream(it, null, bounds) }
-                    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "이미지 형식을 읽을 수 없습니다." }
+                    require(bounds.outWidth > 0 && bounds.outHeight > 0) { context.getString(R.string.ui_image_format_error) }
                     val options = BitmapFactory.Options().apply { inSampleSize = 1 }
                     while (bounds.outWidth / options.inSampleSize > 2048 || bounds.outHeight / options.inSampleSize > 2048) {
                         options.inSampleSize *= 2
                     }
                     val decoded = decodedMediaStream(media).use { BitmapFactory.decodeStream(it, null, options) }
-                    requireNotNull(decoded) { "이미지를 디코딩할 수 없습니다." }
+                    requireNotNull(decoded) { context.getString(R.string.ui_image_decode_error) }
                     bitmap = decoded.asImageBitmap()
                 } else {
                     val digest = MessageDigest.getInstance("SHA-256").digest((media.dataFile.ifBlank { payload }).toByteArray(Charsets.UTF_8))
@@ -84,24 +85,24 @@ fun MediaContent(media: MediaArtifact) {
                     decodedMediaStream(media).use { input ->
                         file.outputStream().use { input.copyTo(it) }
                     }
-                    require(file.length() > 0) { "영상 데이터가 비어 있거나 잘못된 Base64입니다." }
+                    require(file.length() > 0) { context.getString(R.string.ui_video_data_error) }
                     videoFile = file
                 }
             }
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
         } catch (failure: Exception) {
-            error = "미디어 오류: ${failure.message ?: "미디어를 불러오지 못했습니다."}"
+            error = context.getString(R.string.ui_media_error, failure.message ?: context.getString(R.string.ui_media_load_error))
         }
     }
     Column(Modifier.fillMaxWidth().padding(10.dp)) {
-        Text("미디어 첨부 · ${media.mimeType}", style = MaterialTheme.typography.labelSmall)
+        Text(context.getString(R.string.ui_media_label, media.mimeType), style = MaterialTheme.typography.labelSmall)
         when {
             error != null -> Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
-            !image && !video -> Text("지원하지 않는 미디어 형식입니다.")
+            !image && !video -> Text(context.getString(R.string.ui_media_unsupported))
             image && bitmap == null -> CircularProgressIndicator()
-            image -> Image(bitmap!!, "첨부 이미지 확대", Modifier.fillMaxWidth().height(240.dp).clickable { zoom = true })
-            !requested -> Button(onClick = { requested = true }) { Text("영상 재생") }
+            image -> Image(bitmap!!, context.getString(R.string.ui_image_enlarge), Modifier.fillMaxWidth().height(240.dp).clickable { zoom = true })
+            !requested -> Button(onClick = { requested = true }) { Text(context.getString(R.string.ui_video_play)) }
             videoFile == null -> CircularProgressIndicator()
             else -> key(videoFile) {
                 AndroidView(
@@ -115,7 +116,7 @@ fun MediaContent(media: MediaArtifact) {
                                 if (owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) start()
                             }
                             setOnErrorListener { _, _, _ ->
-                                error = "미디어 오류: 이 영상의 코덱을 기기에서 재생할 수 없습니다. MP4(H.264)로 다시 요청해 주세요."
+                                error = context.getString(R.string.ui_video_codec_error)
                                 true
                             }
                             setVideoURI(Uri.fromFile(videoFile))
@@ -125,7 +126,7 @@ fun MediaContent(media: MediaArtifact) {
             }
         }
     }
-    if (zoom && bitmap != null) ImageZoomDialog(bitmap!!, "첨부 이미지", onDismiss = { zoom = false })
+    if (zoom && bitmap != null) ImageZoomDialog(bitmap!!, context.getString(R.string.ui_attached_image), onDismiss = { zoom = false })
 }
 
 /** 파일에 저장한 큰 Base64 첨부도 바이트 배열 복사 없이 디코딩합니다. */

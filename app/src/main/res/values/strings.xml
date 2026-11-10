@@ -1,8 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Jules Code</string>
-
-    <!-- Navigation & TopBar -->
     <string name="nav_dashboard">Dashboard</string>
     <string name="nav_sessions">Sessions</string>
     <string name="nav_sources">Sources</string>
@@ -10,8 +8,6 @@
     <string name="nav_settings_api">Settings</string>
     <string name="top_sync_all">Sync All</string>
     <string name="top_remaining_quota">Remaining Quota</string>
-
-    <!-- Onboarding -->
     <string name="onboarding_default_key_label">Default Jules API Key</string>
     <string name="onboarding_subtitle">Autonomous Async Coding Agent Workspace</string>
     <string name="onboarding_desc">Built-in Room DB safely stores your Jules API Key (`X-Goog-Api-Key`) for mobile environments where direct Google OAuth login is restricted.</string>
@@ -20,8 +16,6 @@
     <string name="onboarding_save_start">Save API Key &amp; Start</string>
     <string name="onboarding_demo_start">Try Demo Simulation Mode</string>
     <string name="onboarding_get_key_link">Get API Key at jules.google.com/settings</string>
-
-    <!-- Dashboard -->
     <string name="demo_banner_text">Demo Sandbox Mode • Connect your real Jules API key in the Settings tab.</string>
     <string name="quota_banner_title">API Quota (24h)</string>
     <string name="quota_daily_format">Daily: %1$d/%2$d</string>
@@ -49,8 +43,6 @@
     <string name="scheduled_add_btn">Add Template</string>
     <string name="template_fill_composer">Fill Composer</string>
     <string name="template_run_now">Run Now</string>
-
-    <!-- Dialogs -->
     <string name="dialog_file_pin_title">@Pin File Context (File Selector)</string>
     <string name="dialog_file_pin_desc">Specify a file path or directory in the repository for Jules to focus on.</string>
     <string name="dialog_file_pin_hint">e.g. src/main/AuthService.kt</string>
@@ -67,8 +59,6 @@
     <string name="cadence_badge_daily">Daily maintenance template · Run manually</string>
     <string name="cadence_badge_weekly">Weekly maintenance template · Run manually</string>
     <string name="cadence_badge_manual">Manual Template (MANUAL)</string>
-
-    <!-- Sessions List -->
     <string name="sessions_search_placeholder">Search by title, prompt, or repository...</string>
     <string name="filter_all">All (%1$d)</string>
     <string name="filter_active">Active</string>
@@ -77,8 +67,6 @@
     <string name="filter_failed">Failed</string>
     <string name="empty_filtered_sessions_title">No Matching Sessions</string>
     <string name="empty_filtered_sessions_subtitle">Try changing your search query or status filter, or start a new task on the Dashboard.</string>
-
-    <!-- Sources -->
     <string name="sources_title">Connected GitHub Repositories (Sources)</string>
     <string name="sources_subtitle">Manage repositories with the Jules GitHub App installed, plus per-repo VM scripts &amp; Memory.</string>
     <string name="sources_github_btn">Configure Jules Repository Access on GitHub</string>
@@ -89,14 +77,12 @@
     <string name="source_env_configure">Configure VM Env &amp; Memory</string>
     <string name="source_open_github">Open GitHub</string>
     <string name="dialog_repo_config_title">%1$s Env &amp; Memory Setup</string>
-    <string name="dialog_repo_config_desc">Save instructions to include in new session prompts. This does not change VM settings in Jules web. Do not enter passwords, tokens, or other secrets.</string>
+    <string name="dialog_repo_config_desc">Save notes you can explicitly insert into the prompt editor. This does not change VM settings in Jules web. Do not enter passwords, tokens, or other secrets.</string>
     <string name="dialog_repo_script_label">Environment Setup Script</string>
     <string name="dialog_repo_env_label">Environment Variables</string>
     <string name="dialog_repo_memory_label">Repository Memory / Conventions (AGENTS.md)</string>
-
-    <!-- Settings -->
-    <string name="settings_language_title">App Language / 언어 설정</string>
-    <string name="settings_language_subtitle">Follow smartphone country/locale by default, or manually select Korean / English.</string>
+    <string name="settings_language_title">App Language</string>
+    <string name="settings_language_subtitle">Follow the device language or select a supported language.</string>
     <string name="lang_option_system">Follow Device Default (Auto)</string>
     <string name="lang_option_ko">한국어 (Korean)</string>
     <string name="lang_option_en">English</string>
@@ -126,8 +112,6 @@
     <string name="commit_user_only">My GitHub Account Only</string>
     <string name="settings_web_console_title">Jules Web Console &amp; Get API Key</string>
     <string name="settings_open_web_btn">Open jules.google.com/settings</string>
-
-    <!-- Session Detail -->
     <string name="detail_default_title">Session Detail</string>
     <string name="detail_followup_placeholder">Send follow-up instructions or code changes to Jules...</string>
     <string name="detail_approval_banner_title">Execution Plan Approval Required</string>
@@ -149,8 +133,6 @@
     <string name="empty_diff_subtitle">Unified Diff syntax viewer will appear once Jules modifies files.</string>
     <string name="empty_bash_title">No Terminal Output Logs</string>
     <string name="empty_bash_subtitle">Build/test commands and stdout from the Cloud VM are recorded here.</string>
-
-    <!-- States -->
     <string name="state_queued">Queued</string>
     <string name="state_planning">Planning</string>
     <string name="state_awaiting_plan">Awaiting Approval</string>
@@ -159,8 +141,6 @@
     <string name="state_paused">Paused</string>
     <string name="state_completed">Completed</string>
     <string name="state_failed">Failed</string>
-
-    <!-- Quick Prompts & Model/Tier Descriptions -->
     <string name="quick_bug_title">Bug Analysis &amp; Fix</string>
     <string name="quick_bug_prompt">Trace the root cause of recent exceptions/errors, patch the fix, and add regression unit tests.</string>
     <string name="quick_test_title">Add Unit Tests</string>
@@ -176,8 +156,6 @@
     <string name="model_36_flash_desc">Ultra-fast code patching, unit test generation &amp; rapid iteration</string>
     <string name="detail_plan_steps_format">Execution Plan (%1$d steps)</string>
     <string name="detail_failed_reason">Session failed: %1$s</string>
-
-    <!-- Per-API-Key Usage & Stalled Session Diagnostics -->
     <string name="quota_banner_key_title">%1$s • Quota (24h)</string>
     <string name="quota_used_format">Used 24h: %1$d/%2$d (Left %3$d)</string>
     <string name="quota_slots_used_format">Active: %1$d/%2$d (Free %3$d)</string>
@@ -207,4 +185,133 @@
     <string name="activity_image_count">Images: %1$d</string>
     <string name="activity_video_count">Videos: %1$d</string>
     <string name="activity_media_count">Other media: %1$d</string>
+    <string name="composer_model_preference">"Insert model preference"</string>
+    <string name="composer_insert_repo_notes">"Insert repository notes"</string>
+    <string name="composer_prompt_notice">"Only the text shown in the editor is sent. App language does not set the agent reply language."</string>
+    <string name="prompt_model_text">"Preferred model: %1$s. If model selection is unavailable, explain that limitation."</string>
+    <string name="prompt_critic_text">"Review the changes for security issues, edge cases, and regressions before finishing."</string>
+    <string name="prompt_ci_text">"Run the build and tests and fix any failures before finishing."</string>
+    <string name="composer_insert_review">"Insert review request"</string>
+    <string name="composer_insert_ci">"Insert CI request"</string>
+    <string name="default_prompt_title">"Default request text"</string>
+    <string name="default_prompt_description">"When enabled, saved text appears in each new task and follow-up draft. Review or edit it before sending. Nothing is appended after Send."</string>
+    <string name="default_prompt_enabled">"Use saved text in new drafts"</string>
+    <string name="default_prompt_text_label">"Your default request text"</string>
+    <string name="health_duration_minutes">"%1$d min"</string>
+    <string name="health_duration_hours">"%1$d h"</string>
+    <string name="health_duration_hours_minutes">"%1$d h %2$d min"</string>
+    <string name="health_normal_title">"Operating normally"</string>
+    <string name="health_plan_title">"Cloud VM stalled after plan approval (%1$s silent)"</string>
+    <string name="health_followup_title">"%1$d follow-up messages unanswered (%2$s elapsed)"</string>
+    <string name="health_agent_title">"Agent task stalled or unresponsive (%1$s elapsed)"</string>
+    <string name="health_plan_detail">"The plan has %1$d steps, but no code changes or terminal output have appeared at %2$s. Follow-up messages waiting: %3$d."</string>
+    <string name="health_followup_detail">"Your %1$d messages were recorded, but the agent has produced no response activity for %2$s."</string>
+    <string name="health_agent_detail">"Session state: %1$s. No new activity for %2$s. Current step: %3$s."</string>
+    <string name="health_first_step">"the first execution step"</string>
+    <string name="health_stalled_badge">"Stalled"</string>
+    <string name="health_stalled_detected">"Agent delay or missing response detected"</string>
+    <string name="message_key_required">"Enter a Jules API key first."</string>
+    <string name="message_key_saved">"API key saved and activated."</string>
+    <string name="message_demo_enabled">"Demo mode enabled. Add a real API key in Settings at any time."</string>
+    <string name="message_profile_switched">"API key profile switched."</string>
+    <string name="message_profile_deleted">"API key profile deleted."</string>
+    <string name="message_profile_sync_failed">"Session sync failed for %1$s: %2$s"</string>
+    <string name="message_sources_failed">"Repository sync failed: %1$s"</string>
+    <string name="message_sync_failed">"Sync failed: %1$s"</string>
+    <string name="message_prompt_required">"Enter a task prompt."</string>
+    <string name="message_session_created">"Jules session created."</string>
+    <string name="message_session_failed">"Could not create session: %1$s"</string>
+    <string name="message_session_load_failed">"Could not load session: %1$s"</string>
+    <string name="message_activity_failed">"Could not load activity: %1$s"</string>
+    <string name="message_demo_completed">"Demo plan approved and task completed."</string>
+    <string name="message_plan_approved">"Plan approved. Jules is starting the changes."</string>
+    <string name="message_approval_failed">"Plan approval failed: %1$s"</string>
+    <string name="message_send_failed">"Message could not be sent: %1$s"</string>
+    <string name="message_session_deleted">"Session deleted."</string>
+    <string name="message_delete_failed">"Session could not be deleted: %1$s"</string>
+    <string name="message_template_required">"Enter both a template title and prompt."</string>
+    <string name="message_template_saved">"Template saved."</string>
+    <string name="message_template_deleted">"Template deleted."</string>
+    <string name="health_active_state">"Active • %1$s"</string>
+    <string name="ui_media_reload">"Media attachment · %1$s
+Refresh the activity to load it."</string>
+    <string name="ui_attachment_reload">"Reload the attachment."</string>
+    <string name="ui_image_format_error">"Cannot read the image format."</string>
+    <string name="ui_image_decode_error">"Cannot decode the image."</string>
+    <string name="ui_video_data_error">"Video data is empty or invalid Base64."</string>
+    <string name="ui_media_error">"Media error: %1$s"</string>
+    <string name="ui_media_load_error">"Could not load media."</string>
+    <string name="ui_media_label">"Media attachment · %1$s"</string>
+    <string name="ui_media_unsupported">"Unsupported media format."</string>
+    <string name="ui_image_enlarge">"Enlarge attached image"</string>
+    <string name="ui_video_play">"Play video"</string>
+    <string name="ui_video_codec_error">"This device cannot play the video codec. Request MP4 (H.264) instead."</string>
+    <string name="ui_attached_image">"Attached image"</string>
+    <string name="ui_content_cache_error">"Cannot read cached content. Refresh the activity."</string>
+    <string name="ui_copy_section">"Copy this section"</string>
+    <string name="ui_previous_section">"Previous section"</string>
+    <string name="ui_next_section">"Next section"</string>
+    <string name="ui_collapse">"Collapse"</string>
+    <string name="ui_expand">"Expand"</string>
+    <string name="ui_copy_all">"Copy all text"</string>
+    <string name="ui_api_key_quick_switch">"Switch API key: %1$s"</string>
+    <string name="ui_open_repository">"Open GitHub repository"</string>
+    <string name="ui_ended_state">"Ended • %1$s"</string>
+    <string name="ui_open_web">"Open on the web"</string>
+    <string name="ui_loading_previous_activities">"Loading previous activities…"</string>
+    <string name="ui_activity_collapse">"Collapse activity"</string>
+    <string name="ui_activity_expand">"Expand activity"</string>
+    <string name="ui_retry">"Retry"</string>
+    <string name="ui_patch_copied">"Patch copied."</string>
+    <string name="ui_load_content">"Load content"</string>
+    <string name="ui_expand_patch_hint">"Expand a code change in the timeline to load its patch."</string>
+    <string name="ui_expand_log_hint">"Expand a command activity in the timeline to load its log."</string>
+    <string name="ui_patch_source">"Patch source"</string>
+    <string name="ui_log_source">"Command log source"</string>
+    <string name="ui_activity_source">"Activity source"</string>
+    <string name="ui_activity_me_prefix">"Me · %1$s"</string>
+    <string name="ui_activity_plan_generated">"Plan generated"</string>
+    <string name="ui_activity_plan_approved">"Plan approved"</string>
+    <string name="ui_activity_user_message">"User message"</string>
+    <string name="ui_activity_agent_message">"Agent message"</string>
+    <string name="ui_activity_code_change">"Code changes"</string>
+    <string name="ui_activity_command">"Command execution"</string>
+    <string name="ui_activity_media">"Media attachment"</string>
+    <string name="ui_activity_record">"Activity"</string>
+    <string name="ui_patch_more_files">"%1$s and %2$d more files"</string>
+    <string name="ui_patch_title">"Code patch (Git Diff)"</string>
+    <string name="ui_long_patch_hint">"Expand long patches and copy them section by section."</string>
+    <string name="ui_patch_share">"Export / share Git patch (.patch)"</string>
+    <string name="ui_copy_patch">"Copy patch"</string>
+    <string name="ui_agent_responding">"Jules is preparing a response…"</string>
+    <string name="ui_agent_reviewing">"Planning the task and reviewing changes"</string>
+    <string name="ui_image_zoom_hint">"Pinch or use buttons to zoom; double-tap to reset"</string>
+    <string name="ui_close">"Close"</string>
+    <string name="ui_zoomed_image">"Enlarged image"</string>
+    <string name="ui_zoom_out">"Zoom out"</string>
+    <string name="ui_zoom_reset">"Reset 1:1"</string>
+    <string name="ui_zoom_in">"Zoom in"</string>
+    <string name="ui_long_text_hint">"Expand long text and copy it section by section."</string>
+    <string name="ui_audio_no_session">"No session is selected."</string>
+    <string name="ui_audio_intro">"Starting the Jules coding session briefing."</string>
+    <string name="ui_audio_task">"Task: %1$s. Current state: %2$s."</string>
+    <string name="ui_audio_repository">"Repository: %1$s. Branch: %2$s."</string>
+    <string name="ui_audio_plan">"The plan has %1$d steps. The first is %2$s."</string>
+    <string name="ui_audio_commands">"Ran %1$d terminal commands; %2$d succeeded."</string>
+    <string name="ui_audio_commit">"Latest commit summary: %1$s."</string>
+    <string name="ui_audio_pull_request">"A GitHub pull request was created: %1$s."</string>
+    <string name="settings_draft_model_title">"Draft model preference and notifications"</string>
+    <string name="settings_draft_model_description">"This saves a draft preference only. Use Insert model preference in the editor to include a visible request. Jules controls the actual model."</string>
+    <string name="ui_audio_started">"Audio changelog started."</string>
+    <string name="ui_repository_saved">"%1$s saved."</string>
+    <string name="ui_user_prompt">"User prompt"</string>
+    <string name="ui_jules_agent">"Jules agent"</string>
+    <string name="ui_exit_code">"Exit %1$d"</string>
+    <string name="ui_repo_memory_hint">"AGENTS.md conventions…"</string>
+    <string name="ui_repository_private">"Private"</string>
+    <string name="ui_repository_public">"Public"</string>
+    <string name="ui_branches">"Branches:"</string>
+    <string name="ui_active">"Active"</string>
+    <string name="ui_agent_label">"Agent"</string>
+    <string name="ui_pr_open">"PR open"</string>
 </resources>

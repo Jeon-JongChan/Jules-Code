@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,7 +41,9 @@ import com.jules.code.data.local.ApiKeyEntity
 import com.jules.code.data.local.ScheduledTemplateEntity
 import com.jules.code.data.model.parseActivityTimestamp
 import com.jules.code.ui.ApiKeyUsageSummary
+import com.jules.code.ui.defaultPromptForDraft
 import com.jules.code.ui.JulesViewModel
+import com.jules.code.ui.health.sessionStateLabel
 import com.jules.code.ui.formatLocalTimestamp
 import com.jules.code.ui.theme.*
 
@@ -107,7 +110,7 @@ fun ApiKeyOnboardingScreen(viewModel: JulesViewModel) {
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    text = "AGENT",
+                                    text = stringResource(R.string.ui_agent_label),
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
@@ -237,6 +240,7 @@ fun DashboardScreen(
     onOpenSession: (String) -> Unit
 ) {
     val sources by viewModel.sources.collectAsState()
+    val context = LocalContext.current
     val sessions by viewModel.sessions.collectAsState()
     val templates by viewModel.templates.collectAsState()
     val prefs by viewModel.preferences.collectAsState()
@@ -260,28 +264,30 @@ fun DashboardScreen(
     }
     val remainingConcurrent = (currentTier.concurrentLimit - concurrentUsed).coerceAtLeast(0)
 
-    var selectedSourceName by remember(sources) {
+    var selectedSourceName by rememberSaveable(sources) {
         mutableStateOf(sources.firstOrNull()?.name ?: "")
     }
     val selectedSource = sources.find { it.name == selectedSourceName }
     val availableBranches = remember(selectedSource) {
         selectedSource?.branchesCsv?.split(",")?.filter { it.isNotBlank() } ?: listOf("main")
     }
-    var selectedBranch by remember(selectedSource) {
+    var selectedBranch by rememberSaveable(selectedSource) {
         mutableStateOf(selectedSource?.defaultBranch ?: "main")
     }
 
-    var prompt by remember { mutableStateOf("") }
-    var taskTitle by remember { mutableStateOf("") }
-    var showTitleField by remember { mutableStateOf(false) }
-    var requireApproval by remember { mutableStateOf(false) }
-    var autoCreatePr by remember { mutableStateOf(true) }
-    var enableCritic by remember(prefs) {
-        mutableStateOf(prefs["enable_critic_agent"] != "false")
+    val defaultPrompt = remember(prefs) { defaultPromptForDraft(prefs) }
+    // 화면 설정 변경 중 작성하던 요청과 실제 작업 옵션을 보존합니다.
+    var prompt by rememberSaveable { mutableStateOf("") }
+    // 설정 로딩이 끝나도 사용자가 작성 중인 문장은 덮어쓰지 않습니다.
+    LaunchedEffect(defaultPrompt) { if (prompt.isBlank()) prompt = defaultPrompt }
+    // 사용자가 삽입을 선택한 문장도 전송 전에 작성창에서 검토·수정할 수 있습니다.
+    val insertPrompt: (String) -> Unit = { addition ->
+        prompt = listOf(prompt, addition).filter { it.isNotBlank() }.joinToString("\n\n")
     }
-    var enableCiFixer by remember(prefs) {
-        mutableStateOf(prefs["enable_ci_fixer"] == "true")
-    }
+    var taskTitle by rememberSaveable { mutableStateOf("") }
+    var showTitleField by rememberSaveable { mutableStateOf(false) }
+    var requireApproval by rememberSaveable { mutableStateOf(false) }
+    var autoCreatePr by rememberSaveable { mutableStateOf(true) }
     var selectedModelId by remember(prefs) {
         mutableStateOf(prefs["jules_model_id"] ?: "GEMINI_3_1_PRO")
     }
@@ -605,7 +611,7 @@ fun DashboardScreen(
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Text(
-                                        text = selectedModel.shortName,
+                                        text = stringResource(R.string.composer_model_preference) + " · " + selectedModel.shortName,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
@@ -664,6 +670,7 @@ fun DashboardScreen(
                                         },
                                         onClick = {
                                             selectedModelId = m.id
+                                            insertPrompt(context.getString(R.string.prompt_model_text, m.shortName))
                                             viewModel.updatePreference("jules_model_id", m.id)
                                             modelDropdownExpanded = false
                                         }
@@ -794,13 +801,9 @@ fun DashboardScreen(
                                 )
                             }
                         )
-                        FilterChip(
-                            selected = enableCritic,
-                            onClick = {
-                                enableCritic = !enableCritic
-                                viewModel.updatePreference("enable_critic_agent", enableCritic.toString())
-                            },
-                            label = { Text(stringResource(R.string.chip_critic_agent), fontSize = 12.sp) },
+                        AssistChip(
+                            onClick = { insertPrompt(context.getString(R.string.prompt_critic_text)) },
+                            label = { Text(stringResource(R.string.composer_insert_review), fontSize = 12.sp) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.VerifiedUser,
@@ -809,13 +812,9 @@ fun DashboardScreen(
                                 )
                             }
                         )
-                        FilterChip(
-                            selected = enableCiFixer,
-                            onClick = {
-                                enableCiFixer = !enableCiFixer
-                                viewModel.updatePreference("enable_ci_fixer", enableCiFixer.toString())
-                            },
-                            label = { Text(stringResource(R.string.chip_ci_fixer), fontSize = 12.sp) },
+                        AssistChip(
+                            onClick = { insertPrompt(context.getString(R.string.prompt_ci_text)) },
+                            label = { Text(stringResource(R.string.composer_insert_ci), fontSize = 12.sp) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.BuildCircle,
@@ -826,6 +825,25 @@ fun DashboardScreen(
                         )
                     }
 
+                    AssistChip(
+                        onClick = {
+                            val repoKey = selectedSource?.let { "${it.owner}_${it.repo}".lowercase(java.util.Locale.ROOT) } ?: "repoless"
+                            val notes = listOf(
+                                R.string.dialog_repo_script_label to prefs["env_script_$repoKey"],
+                                R.string.dialog_repo_env_label to prefs["env_vars_$repoKey"],
+                                R.string.dialog_repo_memory_label to prefs["repo_memory_$repoKey"]
+                            ).mapNotNull { (label, value) -> value?.takeIf { it.isNotBlank() }?.let { "${context.getString(label)}:\n$it" } }
+                            insertPrompt(notes.joinToString("\n\n"))
+                        },
+                        enabled = selectedSource != null,
+                        label = { Text(stringResource(R.string.composer_insert_repo_notes)) }
+                    )
+                    Text(
+                        stringResource(R.string.composer_prompt_notice),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = JulesTextMuted
+                    )
+
                     Button(
                         onClick = {
                             viewModel.createSession(
@@ -835,11 +853,8 @@ fun DashboardScreen(
                                 branchName = selectedBranch,
                                 requirePlanApproval = requireApproval,
                                 autoCreatePr = autoCreatePr,
-                                modelId = selectedModelId,
-                                enableCritic = enableCritic,
-                                enableCiFixer = enableCiFixer,
                                 onCreated = { newId ->
-                                    prompt = ""
+                                    prompt = defaultPrompt
                                     taskTitle = ""
                                     showTitleField = false
                                     onOpenSession(newId)
@@ -854,7 +869,7 @@ fun DashboardScreen(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp)
+                            .heightIn(min = 48.dp)
                     ) {
                         Icon(Icons.Default.RocketLaunch, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
@@ -1373,7 +1388,7 @@ fun SessionSummaryCard(
                                     modifier = Modifier.size(11.dp)
                                 )
                                 Text(
-                                    text = "지연 (Stalled)",
+                                    text = stringResource(R.string.health_stalled_badge),
                                     color = JulesWarning,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontSize = 10.sp,
@@ -1411,7 +1426,7 @@ fun SessionSummaryCard(
                     IconButton(onClick = { confirmDelete = true }) {
                         Icon(
                             imageVector = Icons.Default.DeleteOutline,
-                            contentDescription = "삭제",
+                            contentDescription = stringResource(R.string.session_delete_action),
                             tint = JulesTextMuted,
                             modifier = Modifier.size(16.dp)
                         )
@@ -1454,7 +1469,7 @@ fun SessionSummaryCard(
                         Column(modifier = Modifier.weight(1f)) {
                             if (isStalled) {
                                 Text(
-                                    text = "⚠️ 에이전트 무응답 / 지연 감지",
+                                    text = stringResource(R.string.health_stalled_detected),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = JulesWarning,
@@ -1608,12 +1623,12 @@ fun SessionSummaryCard(
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.MergeType,
-                                contentDescription = "PR 열기",
+                                contentDescription = stringResource(R.string.detail_open_pr_btn),
                                 tint = JulesSuccess,
                                 modifier = Modifier.size(12.dp)
                             )
                             Text(
-                                text = "PR Open",
+                                text = stringResource(R.string.ui_pr_open),
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -1667,16 +1682,13 @@ fun StateBadge(state: String) {
         "IN_PROGRESS", "PLANNING", "QUEUED", "AWAITING_PLAN_APPROVAL", "AWAITING_USER_FEEDBACK" -> true
         else -> false
     }
-    val (color, label) = when (state.uppercase()) {
-        "COMPLETED" -> JulesSuccess to stringResource(R.string.state_completed)
-        "AWAITING_PLAN_APPROVAL" -> JulesWarning to stringResource(R.string.state_awaiting_plan)
-        "AWAITING_USER_FEEDBACK" -> JulesWarning to stringResource(R.string.state_awaiting_feedback)
-        "FAILED" -> JulesDanger to stringResource(R.string.state_failed)
-        "IN_PROGRESS" -> JulesPrimary to stringResource(R.string.state_in_progress)
-        "PLANNING" -> JulesPrimary to stringResource(R.string.state_planning)
-        "QUEUED" -> JulesPrimary to stringResource(R.string.state_queued)
-        "PAUSED" -> JulesTextMuted to stringResource(R.string.state_paused)
-        else -> JulesTextMuted to JulesViewModel.translateState(state)
+    val label = sessionStateLabel(state)
+    val color = when (state.uppercase(java.util.Locale.ROOT)) {
+        "COMPLETED" -> JulesSuccess
+        "AWAITING_PLAN_APPROVAL", "AWAITING_USER_FEEDBACK" -> JulesWarning
+        "FAILED" -> JulesDanger
+        "IN_PROGRESS", "PLANNING", "QUEUED" -> JulesPrimary
+        else -> JulesTextMuted
     }
     Surface(
         color = color.copy(alpha = 0.14f),
@@ -1695,7 +1707,7 @@ fun StateBadge(state: String) {
                     .background(color)
             )
             Text(
-                text = if (isAlive) "활성 • $label" else label,
+                text = if (isAlive) stringResource(R.string.health_active_state, label) else label,
                 color = color,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,

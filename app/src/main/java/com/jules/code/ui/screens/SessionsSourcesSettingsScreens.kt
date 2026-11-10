@@ -214,7 +214,7 @@ fun SourcesScreen(viewModel: JulesViewModel) {
                         value = memoryText,
                         onValueChange = { memoryText = it },
                         label = { Text(stringResource(R.string.dialog_repo_memory_label)) },
-                        placeholder = { Text("AGENTS.md conventions...", fontSize = 12.sp) },
+                        placeholder = { Text(stringResource(R.string.ui_repo_memory_hint), fontSize = 12.sp) },
                         maxLines = 3,
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -227,7 +227,7 @@ fun SourcesScreen(viewModel: JulesViewModel) {
                         viewModel.updatePreference("env_script_$repoSlug", scriptText.trim())
                         viewModel.updatePreference("env_vars_$repoSlug", envVarsText.trim())
                         viewModel.updatePreference("repo_memory_$repoSlug", memoryText.trim())
-                        viewModel.showMessage("${target.owner}/${target.repo} saved.")
+                        viewModel.showMessage(R.string.ui_repository_saved, "${target.owner}/${target.repo}")
                         configTargetSource = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = JulesBrandPurple, contentColor = Color.White)
@@ -420,7 +420,7 @@ private fun SourceItemCard(
                     border = BorderStroke(1.dp, (if (source.isPrivate) JulesWarning else JulesSuccess).copy(alpha = 0.4f))
                 ) {
                     Text(
-                        text = if (source.isPrivate) "Private" else "Public",
+                        text = stringResource(if (source.isPrivate) R.string.ui_repository_private else R.string.ui_repository_public),
                         fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.labelSmall,
                         color = if (source.isPrivate) JulesWarning else JulesSuccess,
@@ -437,7 +437,7 @@ private fun SourceItemCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Branches:",
+                    text = stringResource(R.string.ui_branches),
                     fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.labelSmall,
                     color = JulesTextMuted
@@ -522,7 +522,8 @@ fun SettingsScreen(viewModel: JulesViewModel) {
 
     val commitAuthorMode = prefs["commit_author_mode"] ?: "CO_AUTHORED"
     val selectedLangCode = prefs["app_language"] ?: "SYSTEM"
-    val selectedModelCode = prefs["selected_jules_model"] ?: "GEMINI_3_1_PRO"
+    var languageMenuExpanded by remember { mutableStateOf(false) }
+    val selectedModelCode = prefs["jules_model_id"] ?: "GEMINI_3_1_PRO"
     val notifyOnDone = (prefs["notify_on_session_event"] ?: "true") == "true"
     val selectedTierCode = activeKey?.planTier?.ifBlank { prefs["jules_plan_tier"] ?: "FREE" }
         ?: prefs["jules_plan_tier"] ?: "FREE"
@@ -570,41 +571,31 @@ fun SettingsScreen(viewModel: JulesViewModel) {
                         }
                     }
 
-                    listOf(
-                        "SYSTEM" to stringResource(R.string.lang_option_system),
-                        "ko" to stringResource(R.string.lang_option_ko),
-                        "en" to stringResource(R.string.lang_option_en)
-                    ).forEach { (code, label) ->
-                        val isSelected = selectedLangCode == code
-                        Surface(
-                            color = if (isSelected) JulesBrandPurple.copy(alpha = 0.16f) else JulesSurfaceElevated,
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, if (isSelected) JulesBrandPurple else JulesBorder),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { viewModel.updatePreference("app_language", code) }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = isSelected,
-                                    onClick = { viewModel.updatePreference("app_language", code) }
-                                )
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
+                    val languageOptions = listOf("SYSTEM" to stringResource(R.string.lang_option_system)) +
+                        JulesLocaleManager.LANGUAGE_OPTIONS.map { it.code to it.nativeLabel }
+                    // 긴 언어 목록을 접어 작은 화면에서도 다른 설정에 쉽게 접근하게 합니다.
+                    Box {
+                        OutlinedButton(onClick = { languageMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text(languageOptions.firstOrNull { it.first == selectedLangCode }?.second ?: "English")
+                        }
+                        DropdownMenu(expanded = languageMenuExpanded, onDismissRequest = { languageMenuExpanded = false }) {
+                            languageOptions.forEach { (code, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        languageMenuExpanded = false
+                                        viewModel.updatePreference("app_language", code)
+                                    }
                                 )
                             }
                         }
                     }
                 }
             }
+        }
+
+        item {
+            DefaultPromptSettings(prefs) { name, value -> viewModel.updatePreference(name, value) }
         }
 
         // 1. API 남은 작업량(Quota) 및 요금제 티어 설정 섹션
@@ -725,12 +716,12 @@ fun SettingsScreen(viewModel: JulesViewModel) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = JulesPrimary)
                         Column {
                             Text(
-                                text = stringResource(R.string.settings_model_notify_title),
+                                text = stringResource(R.string.settings_draft_model_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = stringResource(R.string.settings_model_notify_subtitle),
+                                text = stringResource(R.string.settings_draft_model_description),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = JulesTextMuted
                             )
@@ -745,7 +736,7 @@ fun SettingsScreen(viewModel: JulesViewModel) {
                             border = BorderStroke(1.dp, if (isSelected) JulesBrandPurple else JulesBorder),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { viewModel.updatePreference("selected_jules_model", m.id) }
+                                .clickable { viewModel.updatePreference("jules_model_id", m.id) }
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
@@ -753,7 +744,7 @@ fun SettingsScreen(viewModel: JulesViewModel) {
                             ) {
                                 RadioButton(
                                     selected = isSelected,
-                                    onClick = { viewModel.updatePreference("selected_jules_model", m.id) }
+                                    onClick = { viewModel.updatePreference("jules_model_id", m.id) }
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Row(
@@ -980,7 +971,7 @@ fun SettingsScreen(viewModel: JulesViewModel) {
                                                     shape = RoundedCornerShape(4.dp)
                                                 ) {
                                                     Text(
-                                                        text = "ACTIVE",
+                                                        text = stringResource(R.string.ui_active),
                                                         fontFamily = FontFamily.Monospace,
                                                         fontSize = 10.sp,
                                                         fontWeight = FontWeight.Bold,

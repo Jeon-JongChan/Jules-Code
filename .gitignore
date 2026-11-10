@@ -1,4 +1,11 @@
 .graphify/
+.tools/*
+!.tools/.build/
+.tools/.build/*
+!.tools/.build/kotlin.ps1
+!.tools/.test/
+.tools/.test/ui-artifacts/
+.tools/.test/**/__pycache__/
 .docs
 .build/kotlin/
 .build/*.log

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,7 +42,6 @@ import androidx.compose.ui.window.DialogProperties
 import com.jules.code.ui.JulesBrowserUtils
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -50,8 +50,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jules.code.R
 import com.jules.code.data.model.*
+import com.jules.code.ui.defaultPromptForDraft
 import com.jules.code.ui.JulesViewModel
 import com.jules.code.ui.formatLocalTimestamp
+import com.jules.code.ui.health.healthDiagnosticTitle
+import com.jules.code.ui.health.healthDiagnosticDetail
+import com.jules.code.ui.health.sessionStateLabel
+import com.jules.code.ui.buildSessionAudioSummary
 import com.jules.code.ui.SelectableContent
 import com.jules.code.ui.ApiKeyQuickSwitch
 import com.jules.code.ui.theme.*
@@ -99,16 +104,18 @@ fun SessionDetailScreen(
         }
     }
 
-    val isKo = remember(prefs) {
-        val lang = prefs["app_language"] ?: "SYSTEM"
-        !lang.equals("en", ignoreCase = true)
-    }
     val healthDiagnostic = remember(session, activities) {
         JulesViewModel.diagnoseSessionHealth(session, activities)
     }
 
-    var activeTab by remember { mutableIntStateOf(0) } // 0: 타임라인, 1: 계획(Plan), 2: 코드 Diff, 3: 터미널(Bash)
-    var messageInput by remember { mutableStateOf("") }
+    var activeTab by rememberSaveable { mutableIntStateOf(0) } // 0: 타임라인, 1: 계획(Plan), 2: 코드 Diff, 3: 터미널(Bash)
+    val defaultPrompt = remember(prefs) { defaultPromptForDraft(prefs) }
+    // 세션별 후속 초안도 화면 회전·글꼴 변경으로 유실되지 않도록 복원합니다.
+    var messageInput by rememberSaveable(session?.sessionId) { mutableStateOf("") }
+    // 공통 문구도 실제 입력란에만 넣어 수정·삭제 후 전송할 수 있게 합니다.
+    LaunchedEffect(defaultPrompt, session?.sessionId) {
+        if (messageInput.isBlank()) messageInput = defaultPrompt
+    }
     var isSpeaking by remember { mutableStateOf(false) }
 
     // Android 기본 TextToSpeech(TTS)를 활용한 Jules Audio Changelog 구현
@@ -117,7 +124,7 @@ fun SessionDetailScreen(
         var engine: TextToSpeech? = null
         engine = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                engine?.language = Locale.KOREAN
+                engine?.language = com.jules.code.ui.JulesLocaleManager.configurationLocale(context.resources.configuration)
             }
         }
         ttsEngine = engine
@@ -173,7 +180,7 @@ fun SessionDetailScreen(
                                     if (isGithubRepo) {
                                         Icon(
                                             imageVector = Icons.Default.Code,
-                                            contentDescription = "GitHub 저장소 열기",
+                                            contentDescription = stringResource(R.string.ui_open_repository),
                                             tint = JulesPrimary,
                                             modifier = Modifier.size(11.dp)
                                         )
@@ -189,17 +196,7 @@ fun SessionDetailScreen(
                                     )
                                 }
                                 Text("•", fontSize = 11.sp, color = JulesTextMuted, maxLines = 1, softWrap = false)
-                                val stateText = when ((session?.state ?: "").uppercase()) {
-                                    "COMPLETED" -> stringResource(R.string.state_completed)
-                                    "AWAITING_PLAN_APPROVAL" -> stringResource(R.string.state_awaiting_plan)
-                                    "AWAITING_USER_FEEDBACK" -> stringResource(R.string.state_awaiting_feedback)
-                                    "FAILED" -> stringResource(R.string.state_failed)
-                                    "IN_PROGRESS" -> stringResource(R.string.state_in_progress)
-                                    "PLANNING" -> stringResource(R.string.state_planning)
-                                    "QUEUED" -> stringResource(R.string.state_queued)
-                                    "PAUSED" -> stringResource(R.string.state_paused)
-                                    else -> JulesViewModel.translateState(session?.state ?: "")
-                                }
+                                val stateText = sessionStateLabel(session?.state.orEmpty())
                                 val isAlive = session?.isAlive == true
                                 Surface(
                                     color = if (isAlive) JulesSuccess.copy(alpha = 0.16f) else JulesSurfaceElevated,
@@ -217,7 +214,7 @@ fun SessionDetailScreen(
                                             modifier = Modifier.size(5.dp)
                                         ) {}
                                         Text(
-                                            text = if (isAlive) "활성 • $stateText" else "종료 • $stateText",
+                                            text = stringResource(if (isAlive) R.string.health_active_state else R.string.ui_ended_state, stateText),
                                             fontSize = 10.sp,
                                             color = if (isAlive) JulesSuccess else JulesTextMuted,
                                             fontWeight = FontWeight.Bold,
@@ -247,7 +244,7 @@ fun SessionDetailScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Code,
-                                    contentDescription = "GitHub 저장소 열기",
+                                    contentDescription = stringResource(R.string.ui_open_repository),
                                     tint = JulesPrimary
                                 )
                             }
@@ -264,7 +261,7 @@ fun SessionDetailScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = "웹에서 열기",
+                                contentDescription = stringResource(R.string.ui_open_web),
                                 tint = JulesSecondary
                             )
                         }
@@ -276,10 +273,10 @@ fun SessionDetailScreen(
                                     tts.stop()
                                     isSpeaking = false
                                 } else {
-                                    val script = viewModel.buildAudioSummaryScript(session, activities)
+                                    val script = buildSessionAudioSummary(context, session, activities)
                                     tts.speak(script, TextToSpeech.QUEUE_FLUSH, null, "jules_audio_changelog")
                                     isSpeaking = true
-                                    viewModel.showMessage("Audio Changelog started.")
+                                    viewModel.showMessage(R.string.ui_audio_started)
                                 }
                             }
                         ) {
@@ -337,7 +334,8 @@ fun SessionDetailScreen(
                                 color = JulesTextMuted
                             )
                         },
-                        singleLine = true,
+                        minLines = 1,
+                        maxLines = 6,
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = JulesBackground,
@@ -351,7 +349,7 @@ fun SessionDetailScreen(
                         onClick = {
                             val sId = session?.sessionId ?: return@FilledIconButton
                             viewModel.sendMessage(sId, messageInput)
-                            messageInput = ""
+                            messageInput = defaultPrompt
                         },
                         enabled = messageInput.isNotBlank() && session != null && !isAwaitingResponse && !deleting,
                         shape = RoundedCornerShape(12.dp),
@@ -405,14 +403,14 @@ fun SessionDetailScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
-                                    text = if (isKo) healthDiagnostic.reasonTitleKo else healthDiagnostic.reasonTitleEn,
+                                    text = healthDiagnosticTitle(healthDiagnostic),
                                     style = MaterialTheme.typography.titleSmall,
                                     color = JulesWarning,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                             Text(
-                                text = if (isKo) healthDiagnostic.reasonDetailKo else healthDiagnostic.reasonDetailEn,
+                                text = healthDiagnosticDetail(healthDiagnostic),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = JulesTextPrimary,
                                 lineHeight = 18.sp
@@ -670,7 +668,7 @@ fun SessionDetailScreen(
                             item {
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                     CircularProgressIndicator(Modifier.size(24.dp))
-                                    Text(if (isKo) "이전 활동을 불러오는 중입니다…" else "Loading previous activities…")
+                                    Text(stringResource(R.string.ui_loading_previous_activities))
                                 }
                             }
                         } else if (activities.isEmpty() && !isAwaitingResponse) {
@@ -686,7 +684,7 @@ fun SessionDetailScreen(
                                 val expanded = activityId in expandedActivityIds
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Surface(color = JulesSurface, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                                        Row(Modifier.fillMaxWidth().testTag("activity-summary-$activityId").clickable {
+                                        Row(Modifier.fillMaxWidth().clickable {
                                             expandedActivityIds = if (expanded) expandedActivityIds - activityId else expandedActivityIds + activityId
                                             if (!expanded && !act.detailsLoaded && !demoMode && !activityId.startsWith("optimistic-")) {
                                                 session?.sessionId?.let { viewModel.refreshActivity(it, activityId) }
@@ -713,25 +711,25 @@ fun SessionDetailScreen(
                                                 }
                                             }
                                             Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                                if (expanded) "활동 접기" else "활동 펼치기")
+                                                stringResource(if (expanded) R.string.ui_activity_collapse else R.string.ui_activity_expand))
                                         }
                                     }
                                     if (expanded && activityId in loadingActivityIds) CircularProgressIndicator(Modifier.size(24.dp))
                                     else if (expanded && activityErrors[activityId] != null) {
                                         Text(activityErrors[activityId].orEmpty(), color = JulesDanger)
-                                        TextButton(onClick = { session?.sessionId?.let { viewModel.refreshActivity(it, activityId) } }) { Text("다시 시도") }
+                                        TextButton(onClick = { session?.sessionId?.let { viewModel.refreshActivity(it, activityId) } }) { Text(stringResource(R.string.ui_retry)) }
                                     } else if (expanded && (act.detailsLoaded || demoMode || activityId.startsWith("optimistic-"))) ActivityTimelineCard(
                                     activity = act,
                                     onRefresh = if (act.id.startsWith("optimistic-") || act.id.isBlank()) null else {
                                         { session?.sessionId?.let { viewModel.refreshActivity(it, act.id, force = true) } }
                                     },
                                     onCopyPatch = { patchText ->
-                                        if (copyToClipboard(context, "Jules Git Patch", patchText)) viewModel.showMessage("패치를 복사했습니다.")
+                                        if (copyToClipboard(context, "Jules Git Patch", patchText)) viewModel.showMessage(R.string.ui_patch_copied)
                                     }
                                 )
                                     else if (expanded) TextButton(onClick = {
                                         session?.sessionId?.let { viewModel.refreshActivity(it, activityId) }
-                                    }) { Text("본문 불러오기") }
+                                    }) { Text(stringResource(R.string.ui_load_content)) }
                                 }
                             }
                             if (isAwaitingResponse) {
@@ -766,7 +764,7 @@ fun SessionDetailScreen(
                                 EmptyStateCard(
                                     title = stringResource(R.string.empty_diff_title),
                                     subtitle = if (activities.any { !it.detailsLoaded && it.artifacts.any { artifact -> artifact.changeSet != null } })
-                                        "타임라인의 코드 변경 활동을 펼치면 패치를 불러옵니다." else stringResource(R.string.empty_diff_subtitle)
+                                        stringResource(R.string.ui_expand_patch_hint) else stringResource(R.string.empty_diff_subtitle)
                                 )
                             }
                         } else {
@@ -775,7 +773,7 @@ fun SessionDetailScreen(
                                     changeSet = cs,
                                     initiallyExpanded = false,
                                     onCopyPatch = { patchText ->
-                                        if (copyToClipboard(context, "Jules Git Patch", patchText)) viewModel.showMessage("패치를 복사했습니다.")
+                                        if (copyToClipboard(context, "Jules Git Patch", patchText)) viewModel.showMessage(R.string.ui_patch_copied)
                                     }
                                 )
                             }
@@ -787,7 +785,7 @@ fun SessionDetailScreen(
                                 EmptyStateCard(
                                     title = stringResource(R.string.empty_bash_title),
                                     subtitle = if (activities.any { !it.detailsLoaded && it.artifacts.any { artifact -> artifact.bashOutput != null } })
-                                        "타임라인의 명령 실행 활동을 펼치면 로그를 불러옵니다." else stringResource(R.string.empty_bash_subtitle)
+                                        stringResource(R.string.ui_expand_log_hint) else stringResource(R.string.empty_bash_subtitle)
                                 )
                             }
                         } else {
@@ -853,7 +851,7 @@ fun ActivityTimelineCard(
                         JulesOctopusLogo(size = 22.dp, tint = JulesPrimary)
                     }
                     Text(
-                        text = if (isUser) "User Prompt" else "Jules Agent",
+                        text = stringResource(if (isUser) R.string.ui_user_prompt else R.string.ui_jules_agent),
                         fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
@@ -935,9 +933,9 @@ fun ActivityTimelineCard(
             }
             activity.contentFiles.forEach { (label, path) ->
                 Text(when {
-                    label.startsWith("unidiffPatch") || label.startsWith("gitPatch") -> "코드 패치 원문"
-                    label.startsWith("output") -> "실행 로그 원문"
-                    else -> "활동 원문"
+                    label.startsWith("unidiffPatch") || label.startsWith("gitPatch") -> stringResource(R.string.ui_patch_source)
+                    label.startsWith("output") -> stringResource(R.string.ui_log_source)
+                    else -> stringResource(R.string.ui_activity_source)
                 }, fontWeight = FontWeight.Bold)
                 com.jules.code.ui.FileSelectableContent(path, diff = label.startsWith("unidiffPatch") || label.startsWith("gitPatch"))
             }
@@ -946,25 +944,28 @@ fun ActivityTimelineCard(
 }
 
 /** 접힌 제목에서도 사용자 질문과 Jules 응답을 구분하고 활동 종류를 표시합니다. */
-fun activitySummaryTitle(activity: JulesActivity): String =
-    (when {
-        activity.resolvedUserMessage != null -> "나 · "
-        activity.resolvedAgentMessage != null -> "Jules · "
-        else -> ""
-    }) + (activity.progressUpdated?.title?.takeIf { it.isNotBlank() }
+@Composable
+fun activitySummaryTitle(activity: JulesActivity): String {
+    val title = activity.progressUpdated?.title?.takeIf { it.isNotBlank() }
         ?: activity.description.lineSequence().firstOrNull()?.takeIf { it.isNotBlank() }?.take(160)
         ?: when {
-            activity.planGenerated != null -> "실행 계획 생성"
-            activity.planApproved != null -> "실행 계획 승인"
-            activity.resolvedUserMessage != null -> "사용자 메시지"
-            activity.resolvedAgentMessage != null -> "에이전트 메시지"
-            activity.sessionCompleted != null -> "작업 완료"
-            activity.sessionFailed != null -> "작업 실패"
-            activity.artifacts.any { it.changeSet != null } -> "코드 변경"
-            activity.artifacts.any { it.bashOutput != null } -> "명령 실행"
-            activity.artifacts.any { it.media != null } -> "미디어 첨부"
-            else -> "활동 기록"
-        })
+            activity.planGenerated != null -> stringResource(R.string.ui_activity_plan_generated)
+            activity.planApproved != null -> stringResource(R.string.ui_activity_plan_approved)
+            activity.resolvedUserMessage != null -> stringResource(R.string.ui_activity_user_message)
+            activity.resolvedAgentMessage != null -> stringResource(R.string.ui_activity_agent_message)
+            activity.sessionCompleted != null -> stringResource(R.string.state_completed)
+            activity.sessionFailed != null -> stringResource(R.string.state_failed)
+            activity.artifacts.any { it.changeSet != null } -> stringResource(R.string.ui_activity_code_change)
+            activity.artifacts.any { it.bashOutput != null } -> stringResource(R.string.ui_activity_command)
+            activity.artifacts.any { it.media != null } -> stringResource(R.string.ui_activity_media)
+            else -> stringResource(R.string.ui_activity_record)
+        }
+    return when {
+        activity.resolvedUserMessage != null -> stringResource(R.string.ui_activity_me_prefix, title)
+        activity.resolvedAgentMessage != null -> "Jules · $title"
+        else -> title
+    }
+}
 
 /**
  * 에이전트가 생성한 단계별 계획(`ExecutionPlan`) 스테퍼 카드입니다.
@@ -1150,13 +1151,11 @@ fun ChangeSetDiffCard(
     }
     val totalAdded = remember(fileSummaries) { fileSummaries.sumOf { it.added } }
     val totalRemoved = remember(fileSummaries) { fileSummaries.sumOf { it.removed } }
-    val primaryHeader = remember(fileSummaries, commitMsg) {
-        when {
+    val primaryHeader = when {
             fileSummaries.size == 1 -> fileSummaries.first().filePath
-            fileSummaries.size > 1 -> "${fileSummaries.first().shortName} 외 ${fileSummaries.size - 1}개 파일"
+            fileSummaries.size > 1 -> stringResource(R.string.ui_patch_more_files, fileSummaries.first().shortName, fileSummaries.size - 1)
             commitMsg.isNotBlank() -> commitMsg
-            else -> "코드 변경 패치 (Git Diff)"
-        }
+            else -> stringResource(R.string.ui_patch_title)
     }
 
     Surface(
@@ -1240,7 +1239,7 @@ fun ChangeSetDiffCard(
                             onClick = {
                                 // Binder 전송 한계를 넘는 원문은 구간별 복사로 안내합니다.
                                 if (patch.length > 100_000) {
-                                    android.widget.Toast.makeText(context, "긴 패치는 펼친 뒤 구간별 복사를 사용해 주세요.", android.widget.Toast.LENGTH_LONG).show()
+                                    android.widget.Toast.makeText(context, context.getString(R.string.ui_long_patch_hint), android.widget.Toast.LENGTH_LONG).show()
                                     return@IconButton
                                 }
                                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
@@ -1248,13 +1247,13 @@ fun ChangeSetDiffCard(
                                     putExtra(Intent.EXTRA_SUBJECT, commitMsg.ifBlank { "jules-changes.patch" })
                                     putExtra(Intent.EXTRA_TEXT, patch)
                                 }
-                                context.startActivity(Intent.createChooser(sendIntent, "Git Patch (.patch) 내보내기 / 공유"))
+                                context.startActivity(Intent.createChooser(sendIntent, context.getString(R.string.ui_patch_share)))
                             },
                             modifier = Modifier.size(30.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = ".patch 내보내기/공유",
+                                contentDescription = stringResource(R.string.ui_patch_share),
                                 tint = JulesSecondary,
                                 modifier = Modifier.size(15.dp)
                             )
@@ -1262,7 +1261,7 @@ fun ChangeSetDiffCard(
                         IconButton(onClick = { onCopyPatch(patch) }, modifier = Modifier.size(30.dp)) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "패치 복사",
+                                contentDescription = stringResource(R.string.ui_copy_patch),
                                 tint = JulesTextMuted,
                                 modifier = Modifier.size(15.dp)
                             )
@@ -1380,7 +1379,7 @@ fun BashOutputCard(bash: BashOutputArtifact) {
                     border = BorderStroke(1.dp, (if (isSuccess) JulesSuccess else JulesDanger).copy(alpha = 0.4f))
                 ) {
                     Text(
-                        text = "exit ${bash.exitCode}",
+                        text = stringResource(R.string.ui_exit_code, bash.exitCode),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -1425,13 +1424,13 @@ fun AgentRespondingCard() {
             )
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "Jules 에이전트가 응답을 생성하고 있습니다...",
+                    text = stringResource(R.string.ui_agent_responding),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = JulesTextPrimary
                 )
                 Text(
-                    text = "작업 계획 수립 및 변경사항 검토 중",
+                    text = stringResource(R.string.ui_agent_reviewing),
                     style = MaterialTheme.typography.bodySmall,
                     color = JulesTextMuted
                 )
@@ -1484,7 +1483,7 @@ fun ImageZoomDialog(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "핀치 또는 버튼으로 확대/축소, 더블탭 리셋",
+                        text = stringResource(R.string.ui_image_zoom_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.7f)
                     )
@@ -1511,7 +1510,7 @@ fun ImageZoomDialog(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "닫기",
+                        contentDescription = stringResource(R.string.ui_close),
                         tint = Color.White
                     )
                 }
@@ -1548,7 +1547,7 @@ fun ImageZoomDialog(
             ) {
                 Image(
                     bitmap = bitmap,
-                    contentDescription = "확대된 이미지 산출물",
+                    contentDescription = stringResource(R.string.ui_zoomed_image),
                     modifier = Modifier
                         .fillMaxWidth()
                         .graphicsLayer {
@@ -1579,18 +1578,18 @@ fun ImageZoomDialog(
                         scale = (scale - 0.5f).coerceAtLeast(1f)
                         if (scale <= 1f) offset = androidx.compose.ui.geometry.Offset.Zero
                     }) {
-                        Icon(Icons.Default.ZoomOut, contentDescription = "축소", tint = Color.White)
+                        Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.ui_zoom_out), tint = Color.White)
                     }
                     TextButton(onClick = {
                         scale = 1f
                         offset = androidx.compose.ui.geometry.Offset.Zero
                     }) {
-                        Text("1:1 리셋", color = JulesPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.ui_zoom_reset), color = JulesPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     IconButton(onClick = {
                         scale = (scale + 0.5f).coerceAtMost(5f)
                     }) {
-                        Icon(Icons.Default.ZoomIn, contentDescription = "확대", tint = Color.White)
+                        Icon(Icons.Default.ZoomIn, contentDescription = stringResource(R.string.ui_zoom_in), tint = Color.White)
                     }
                 }
             }
@@ -1612,7 +1611,7 @@ fun MediaArtifactCard(media: MediaArtifact) {
 private fun copyToClipboard(context: Context, label: String, text: String): Boolean {
     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
     if (text.length > 100_000) {
-        android.widget.Toast.makeText(context, "긴 글은 펼친 뒤 구간별 복사를 사용해 주세요.", android.widget.Toast.LENGTH_LONG).show()
+        android.widget.Toast.makeText(context, context.getString(R.string.ui_long_text_hint), android.widget.Toast.LENGTH_LONG).show()
         return false
     }
     cm?.setPrimaryClip(ClipData.newPlainText(label, text))

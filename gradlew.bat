@@ -35,6 +35,9 @@ set APP_HOME=%DIRNAME%
 @rem Resolve any "." and ".." in APP_HOME to make it shorter.
 for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 
+@rem 환경 활성화를 생략해도 다운로드와 의존성 캐시를 프로젝트 도구 폴더에 모읍니다.
+if not defined GRADLE_USER_HOME set "GRADLE_USER_HOME=%APP_HOME%\.tools\.build\kotlin\gradle"
+
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
@@ -74,7 +77,8 @@ set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 
 
 @rem Execute Gradle
-"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
+@rem 프로젝트 캐시가 소스 폴더 밖의 .tools 내부에만 생성되도록 기본 경로를 지정합니다.
+"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain --project-cache-dir "%APP_HOME%\.tools\.gradle" %*
 
 :end
 @rem End local scope for the variables with windows NT shell

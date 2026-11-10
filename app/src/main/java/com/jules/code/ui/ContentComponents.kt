@@ -10,6 +10,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.stringResource
+import com.jules.code.R
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.SpanStyle
@@ -51,16 +53,16 @@ fun FileSelectableContent(path: String, diff: Boolean = false) {
     Column {
         when {
             result == null -> CircularProgressIndicator()
-            current == null -> Text("원문 캐시를 읽지 못했습니다. 활동을 새로고침해 주세요.", color = MaterialTheme.colorScheme.error)
+            current == null -> Text(stringResource(R.string.ui_content_cache_error), color = MaterialTheme.colorScheme.error)
             else -> {
-                SelectableContent(current.first, diff = diff, initiallyExpanded = true, copyLabel = "현재 구간 복사")
+                SelectableContent(current.first, diff = diff, initiallyExpanded = true, copyLabel = stringResource(R.string.ui_copy_section))
                 Row {
-                    IconButton(enabled = page > 0, onClick = { page-- }) { Icon(Icons.Default.ChevronLeft, "원문 이전 구간") }
+                    IconButton(enabled = page > 0, onClick = { page-- }) { Icon(Icons.Default.ChevronLeft, stringResource(R.string.ui_previous_section)) }
                     Text("${page + 1}", Modifier.padding(top = 12.dp))
                     IconButton(enabled = current.second * 2 < File(path).length(), onClick = {
                         if (starts.size == page + 1) starts.add(current.second)
                         page++
-                    }) { Icon(Icons.Default.ChevronRight, "원문 다음 구간") }
+                    }) { Icon(Icons.Default.ChevronRight, stringResource(R.string.ui_next_section)) }
                 }
             }
         }
@@ -124,21 +126,21 @@ fun SelectableContent(
         Row {
             if (overflow || end < text.length || expanded) {
                 TextButton(onClick = { expanded = !expanded; page = 0 }) {
-                    Text(if (expanded) "접기" else "펼치기")
+                    Text(stringResource(if (expanded) R.string.ui_collapse else R.string.ui_expand))
                 }
             }
             if (expanded && (page > 0 || end < text.length)) {
                 IconButton(enabled = page > 0, onClick = { page-- }) {
-                    Icon(Icons.Default.ChevronLeft, "이전 구간")
+                    Icon(Icons.Default.ChevronLeft, stringResource(R.string.ui_previous_section))
                 }
                 Text("${page + 1}", modifier = Modifier.padding(top = 12.dp))
                 IconButton(enabled = end < text.length, onClick = {
                     if (starts.size == page + 1) starts.add(end)
                     page++
-                }) { Icon(Icons.Default.ChevronRight, "다음 구간") }
+                }) { Icon(Icons.Default.ChevronRight, stringResource(R.string.ui_next_section)) }
             }
             IconButton(onClick = { clipboard.setText(AnnotatedString(visible)) }) {
-                Icon(Icons.Default.ContentCopy, copyLabel ?: if (start == 0 && end == text.length) "전체 글 복사" else "현재 구간 복사")
+                Icon(Icons.Default.ContentCopy, copyLabel ?: stringResource(if (start == 0 && end == text.length) R.string.ui_copy_all else R.string.ui_copy_section))
             }
         }
     }
@@ -153,7 +155,7 @@ fun ApiKeyQuickSwitch(viewModel: JulesViewModel, onSwitch: () -> Unit = {}) {
     if (keys.size < 2) return
     Box {
         IconButton(onClick = { open = true }) {
-            Icon(Icons.Default.Key, "API 키 빠른 전환: ${active?.label.orEmpty()}")
+            Icon(Icons.Default.Key, stringResource(R.string.ui_api_key_quick_switch, active?.label.orEmpty()))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             keys.forEach { profile ->

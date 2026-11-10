@@ -1,8 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Jules Code</string>
-
-    <!-- Navigation & TopBar -->
     <string name="nav_dashboard">대시보드</string>
     <string name="nav_sessions">세션</string>
     <string name="nav_sources">저장소</string>
@@ -10,8 +8,6 @@
     <string name="nav_settings_api">설정</string>
     <string name="top_sync_all">전체 동기화</string>
     <string name="top_remaining_quota">남은 작업량</string>
-
-    <!-- Onboarding -->
     <string name="onboarding_default_key_label">기본 Jules API 키</string>
     <string name="onboarding_subtitle">자율형 비동기 코딩 에이전트 모바일 워크스페이스</string>
     <string name="onboarding_desc">Google 계정 직접 로그인이 제한된 환경을 위해 Jules API 키(`X-Goog-Api-Key`)를 기기 내 Room DB에 안전하게 내장하여 동작합니다.</string>
@@ -20,8 +16,6 @@
     <string name="onboarding_save_start">API 키 저장 및 시작하기</string>
     <string name="onboarding_demo_start">API 키 없이 데모 시뮬레이션 모드로 체험</string>
     <string name="onboarding_get_key_link">jules.google.com/settings 에서 API 키 발급</string>
-
-    <!-- Dashboard -->
     <string name="demo_banner_text">데모 샌드박스 모드 • 설정 탭에서 실제 Jules API 키를 연결할 수 있습니다.</string>
     <string name="quota_banner_title">API 남은 작업량 (24h)</string>
     <string name="quota_daily_format">오늘: %1$d/%2$d회</string>
@@ -49,8 +43,6 @@
     <string name="scheduled_add_btn">새 템플릿 추가</string>
     <string name="template_fill_composer">컴포저에 채우기</string>
     <string name="template_run_now">지금 실행</string>
-
-    <!-- Dialogs -->
     <string name="dialog_file_pin_title">@파일 컨텍스트 지정 (File Selector)</string>
     <string name="dialog_file_pin_desc">Jules가 중점적으로 분석·수정할 저장소 내 파일 경로나 디렉터리를 지정합니다.</string>
     <string name="dialog_file_pin_hint">예: src/main/AuthService.kt</string>
@@ -67,8 +59,6 @@
     <string name="cadence_badge_daily">매일 점검용 템플릿 · 수동 실행</string>
     <string name="cadence_badge_weekly">매주 점검용 템플릿 · 수동 실행</string>
     <string name="cadence_badge_manual">수동 실행 템플릿 (MANUAL)</string>
-
-    <!-- Sessions List -->
     <string name="sessions_search_placeholder">세션 제목, 프롬프트, 저장소 이름으로 검색...</string>
     <string name="filter_all">전체 (%1$d)</string>
     <string name="filter_active">진행 중</string>
@@ -77,8 +67,6 @@
     <string name="filter_failed">실패</string>
     <string name="empty_filtered_sessions_title">조건에 맞는 세션이 없습니다</string>
     <string name="empty_filtered_sessions_subtitle">검색어나 상태 필터를 변경하거나 대시보드에서 새 작업을 시작해보세요.</string>
-
-    <!-- Sources -->
     <string name="sources_title">연결된 GitHub 저장소 (Sources)</string>
     <string name="sources_subtitle">Jules GitHub App이 설치된 저장소 목록과 저장소별 VM 환경 스크립트/Memory를 관리합니다.</string>
     <string name="sources_github_btn">GitHub에서 Jules 저장소 권한 추가/설정</string>
@@ -93,8 +81,6 @@
     <string name="dialog_repo_script_label">초기 환경 구축 스크립트 (Setup Script)</string>
     <string name="dialog_repo_env_label">환경 변수 (Environment Variables)</string>
     <string name="dialog_repo_memory_label">Repository Memory / 코딩 컨벤션 (AGENTS.md)</string>
-
-    <!-- Settings -->
     <string name="settings_language_title">앱 표시 언어 설정 (App Language)</string>
     <string name="settings_language_subtitle">기본적으로 스마트폰의 국가/언어 설정을 자동으로 따라가며, 원하는 언어로 직접 고정할 수도 있습니다.</string>
     <string name="lang_option_system">스마트폰 기본 언어 따라가기 (자동)</string>
@@ -126,8 +112,6 @@
     <string name="commit_user_only">내 GitHub 계정 단독 표기</string>
     <string name="settings_web_console_title">Jules 공식 웹 콘솔 &amp; API 키 발급</string>
     <string name="settings_open_web_btn">jules.google.com/settings 열기</string>
-
-    <!-- Session Detail -->
     <string name="detail_default_title">세션 상세</string>
     <string name="detail_followup_placeholder">Jules에게 후속 지시 또는 코드 수정 요청...</string>
     <string name="detail_approval_banner_title">실행 계획 승인이 필요합니다</string>
@@ -149,8 +133,6 @@
     <string name="empty_diff_subtitle">Jules가 코드를 수정하면 Unified Diff 하이라이팅 뷰어가 표시됩니다.</string>
     <string name="empty_bash_title">터미널 실행 로그가 없습니다</string>
     <string name="empty_bash_subtitle">클라우드 VM에서 실행된 빌드/테스트 명령어와 표준 출력이 이곳에 기록됩니다.</string>
-
-    <!-- States -->
     <string name="state_queued">대기열 등록됨</string>
     <string name="state_planning">계획 수립 중</string>
     <string name="state_awaiting_plan">계획 승인 대기</string>
@@ -159,8 +141,6 @@
     <string name="state_paused">일시중지됨</string>
     <string name="state_completed">작업 완료</string>
     <string name="state_failed">실패</string>
-
-    <!-- Quick Prompts & Model/Tier Descriptions -->
     <string name="quick_bug_title">버그 분석 및 수정</string>
     <string name="quick_bug_prompt">최근 발생한 예외/오류 원인을 추적해 근본 원인을 수정하고 회귀 단위 테스트를 추가해줘.</string>
     <string name="quick_test_title">단위 테스트 보강</string>
@@ -176,8 +156,6 @@
     <string name="model_36_flash_desc">초고속 코드 패치, 단위 테스트 생성 및 빠른 반복 작업</string>
     <string name="detail_plan_steps_format">실행 계획 (%1$d단계)</string>
     <string name="detail_failed_reason">세션 실패 사유: %1$s</string>
-
-    <!-- Per-API-Key Usage & Stalled Session Diagnostics -->
     <string name="quota_banner_key_title">%1$s • 작업 소모량 (24h)</string>
     <string name="quota_used_format">24h 소모: %1$d/%2$d회 (잔여 %3$d)</string>
     <string name="quota_slots_used_format">동시 실행: %1$d/%2$d개 (여유 %3$d)</string>
@@ -207,5 +185,133 @@
     <string name="activity_image_count">이미지 %1$d개</string>
     <string name="activity_video_count">영상 %1$d개</string>
     <string name="activity_media_count">기타 미디어 %1$d개</string>
+    <string name="composer_model_preference">"모델 선호 문장 삽입"</string>
+    <string name="composer_insert_repo_notes">"저장소 노트 삽입"</string>
+    <string name="composer_prompt_notice">"작성창에 보이는 본문만 전송합니다. 앱 언어는 에이전트의 답변 언어를 지정하지 않습니다."</string>
+    <string name="prompt_model_text">"선호 모델: %1$s. 모델을 선택할 수 없다면 그 한계를 설명해 주세요."</string>
+    <string name="prompt_critic_text">"완료 전에 변경 사항의 보안 문제, 예외 상황, 회귀를 검토해 주세요."</string>
+    <string name="prompt_ci_text">"완료 전에 빌드와 테스트를 실행하고 실패를 수정해 주세요."</string>
+    <string name="composer_insert_review">"검토 요청 삽입"</string>
+    <string name="composer_insert_ci">"CI 요청 삽입"</string>
+    <string name="default_prompt_title">"기본 요청 문구"</string>
+    <string name="default_prompt_description">"켜면 저장한 문구가 새 작업과 후속 채팅 작성창에 표시됩니다. 전송 전에 수정하거나 삭제할 수 있으며 전송 후 별도 문구를 붙이지 않습니다."</string>
+    <string name="default_prompt_enabled">"새 작성창에 저장한 문구 넣기"</string>
+    <string name="default_prompt_text_label">"직접 작성한 기본 요청 문구"</string>
+    <string name="health_duration_minutes">"%1$d분"</string>
+    <string name="health_duration_hours">"%1$d시간"</string>
+    <string name="health_duration_hours_minutes">"%1$d시간 %2$d분"</string>
+    <string name="health_normal_title">"정상 동작 중"</string>
+    <string name="health_plan_title">"계획 승인 후 클라우드 VM 지연 (%1$s 무응답)"</string>
+    <string name="health_followup_title">"후속 요청 %1$d건 무응답 (%2$s 경과)"</string>
+    <string name="health_agent_title">"에이전트 작업 지연 또는 무응답 (%1$s 경과)"</string>
+    <string name="health_plan_detail">"계획은 %1$d단계이지만 %2$s에서 코드 변경이나 터미널 출력이 생성되지 않고 있습니다. 응답 대기 중인 후속 메시지: %3$d건."</string>
+    <string name="health_followup_detail">"후속 메시지 %1$d건이 접수되었지만 에이전트가 %2$s 동안 응답 활동을 생성하지 않고 있습니다."</string>
+    <string name="health_agent_detail">"세션 상태: %1$s. %2$s 동안 새 활동이 없습니다. 현재 단계: %3$s."</string>
+    <string name="health_first_step">"첫 실행 단계"</string>
+    <string name="health_stalled_badge">"응답 지연"</string>
+    <string name="health_stalled_detected">"에이전트 응답 지연 감지"</string>
+    <string name="message_key_required">"먼저 Jules API 키를 입력해 주세요."</string>
+    <string name="message_key_saved">"API 키를 저장하고 활성화했습니다."</string>
+    <string name="message_demo_enabled">"데모 모드를 켰습니다. 실제 API 키는 설정에서 등록할 수 있습니다."</string>
+    <string name="message_profile_switched">"API 키 프로필을 전환했습니다."</string>
+    <string name="message_profile_deleted">"API 키 프로필을 삭제했습니다."</string>
+    <string name="message_profile_sync_failed">"%1$s 세션 동기화 실패: %2$s"</string>
+    <string name="message_sources_failed">"저장소 조회 실패: %1$s"</string>
+    <string name="message_sync_failed">"동기화 실패: %1$s"</string>
+    <string name="message_prompt_required">"작업 지시를 입력해 주세요."</string>
+    <string name="message_session_created">"Jules 세션을 생성했습니다."</string>
+    <string name="message_session_failed">"세션 생성 실패: %1$s"</string>
+    <string name="message_session_load_failed">"세션 조회 실패: %1$s"</string>
+    <string name="message_activity_failed">"활동 조회 실패: %1$s"</string>
+    <string name="message_demo_completed">"데모 계획을 승인하고 작업을 완료했습니다."</string>
+    <string name="message_plan_approved">"계획을 승인했습니다. Jules가 수정을 시작합니다."</string>
+    <string name="message_approval_failed">"계획 승인 실패: %1$s"</string>
+    <string name="message_send_failed">"메시지 전송 실패: %1$s"</string>
+    <string name="message_session_deleted">"세션을 삭제했습니다."</string>
+    <string name="message_delete_failed">"세션 삭제 실패: %1$s"</string>
+    <string name="message_template_required">"템플릿 제목과 작업 지시를 모두 입력해 주세요."</string>
+    <string name="message_template_saved">"템플릿을 저장했습니다."</string>
+    <string name="message_template_deleted">"템플릿을 삭제했습니다."</string>
+    <string name="health_active_state">"활성 • %1$s"</string>
+    <string name="ui_media_reload">"미디어 첨부 · %1$s
+활동을 새로고침해 첨부를 불러와 주세요."</string>
+    <string name="ui_attachment_reload">"첨부를 다시 불러와 주세요."</string>
+    <string name="ui_image_format_error">"이미지 형식을 읽을 수 없습니다."</string>
+    <string name="ui_image_decode_error">"이미지를 디코딩할 수 없습니다."</string>
+    <string name="ui_video_data_error">"영상 데이터가 비어 있거나 잘못된 Base64입니다."</string>
+    <string name="ui_media_error">"미디어 오류: %1$s"</string>
+    <string name="ui_media_load_error">"미디어를 불러오지 못했습니다."</string>
+    <string name="ui_media_label">"미디어 첨부 · %1$s"</string>
+    <string name="ui_media_unsupported">"지원하지 않는 미디어 형식입니다."</string>
+    <string name="ui_image_enlarge">"첨부 이미지 확대"</string>
+    <string name="ui_video_play">"영상 재생"</string>
+    <string name="ui_video_codec_error">"기기에서 이 영상의 코덱을 재생할 수 없습니다. MP4(H.264)로 다시 요청해 주세요."</string>
+    <string name="ui_attached_image">"첨부 이미지"</string>
+    <string name="ui_content_cache_error">"원문 캐시를 읽지 못했습니다. 활동을 새로고침해 주세요."</string>
+    <string name="ui_copy_section">"현재 구간 복사"</string>
+    <string name="ui_previous_section">"이전 구간"</string>
+    <string name="ui_next_section">"다음 구간"</string>
+    <string name="ui_collapse">"접기"</string>
+    <string name="ui_expand">"펼치기"</string>
+    <string name="ui_copy_all">"전체 글 복사"</string>
+    <string name="ui_api_key_quick_switch">"API 키 빠른 전환: %1$s"</string>
+    <string name="ui_open_repository">"GitHub 저장소 열기"</string>
+    <string name="ui_ended_state">"종료 • %1$s"</string>
+    <string name="ui_open_web">"웹에서 열기"</string>
+    <string name="ui_loading_previous_activities">"이전 활동을 불러오는 중입니다…"</string>
+    <string name="ui_activity_collapse">"활동 접기"</string>
+    <string name="ui_activity_expand">"활동 펼치기"</string>
+    <string name="ui_retry">"다시 시도"</string>
+    <string name="ui_patch_copied">"패치를 복사했습니다."</string>
+    <string name="ui_load_content">"본문 불러오기"</string>
+    <string name="ui_expand_patch_hint">"타임라인의 코드 변경 활동을 펼치면 패치를 불러옵니다."</string>
+    <string name="ui_expand_log_hint">"타임라인의 명령 실행 활동을 펼치면 로그를 불러옵니다."</string>
+    <string name="ui_patch_source">"코드 패치 원문"</string>
+    <string name="ui_log_source">"실행 로그 원문"</string>
+    <string name="ui_activity_source">"활동 원문"</string>
+    <string name="ui_activity_me_prefix">"나 · %1$s"</string>
+    <string name="ui_activity_plan_generated">"실행 계획 생성"</string>
+    <string name="ui_activity_plan_approved">"실행 계획 승인"</string>
+    <string name="ui_activity_user_message">"사용자 메시지"</string>
+    <string name="ui_activity_agent_message">"에이전트 메시지"</string>
+    <string name="ui_activity_code_change">"코드 변경"</string>
+    <string name="ui_activity_command">"명령 실행"</string>
+    <string name="ui_activity_media">"미디어 첨부"</string>
+    <string name="ui_activity_record">"활동 기록"</string>
+    <string name="ui_patch_more_files">"%1$s 외 %2$d개 파일"</string>
+    <string name="ui_patch_title">"코드 변경 패치 (Git Diff)"</string>
+    <string name="ui_long_patch_hint">"긴 패치는 펼친 뒤 구간별 복사를 사용해 주세요."</string>
+    <string name="ui_patch_share">"Git Patch (.patch) 내보내기 / 공유"</string>
+    <string name="ui_copy_patch">"패치 복사"</string>
+    <string name="ui_agent_responding">"Jules 에이전트가 응답을 생성하고 있습니다…"</string>
+    <string name="ui_agent_reviewing">"작업 계획 수립 및 변경사항 검토 중"</string>
+    <string name="ui_image_zoom_hint">"핀치 또는 버튼으로 확대/축소, 더블탭 리셋"</string>
+    <string name="ui_close">"닫기"</string>
+    <string name="ui_zoomed_image">"확대된 이미지 산출물"</string>
+    <string name="ui_zoom_out">"축소"</string>
+    <string name="ui_zoom_reset">"1:1 리셋"</string>
+    <string name="ui_zoom_in">"확대"</string>
+    <string name="ui_long_text_hint">"긴 글은 펼친 뒤 구간별 복사를 사용해 주세요."</string>
+    <string name="ui_audio_no_session">"선택된 세션 정보가 없습니다."</string>
+    <string name="ui_audio_intro">"Jules 코딩 세션 브리핑을 시작합니다."</string>
+    <string name="ui_audio_task">"작업 제목은 %1$s이며 현재 상태는 %2$s입니다."</string>
+    <string name="ui_audio_repository">"대상 저장소는 %1$s, 브랜치는 %2$s입니다."</string>
+    <string name="ui_audio_plan">"실행 계획은 총 %1$d단계이며 주요 단계는 %2$s입니다."</string>
+    <string name="ui_audio_commands">"터미널 명령 %1$d개를 실행했고 %2$d개가 성공했습니다."</string>
+    <string name="ui_audio_commit">"생성된 최신 커밋 요약은 다음과 같습니다: %1$s."</string>
+    <string name="ui_audio_pull_request">"최종 결과물로 GitHub Pull Request가 생성되었습니다: %1$s."</string>
+    <string name="settings_draft_model_title">"작성창 모델 선호와 알림"</string>
+    <string name="settings_draft_model_description">"작성창의 모델 선호만 저장합니다. 작성창에서 모델 선호 삽입을 눌러 요청 문장을 추가하세요. 실제 모델은 Jules가 결정합니다."</string>
+    <string name="ui_audio_started">"오디오 변경 요약을 시작했습니다."</string>
+    <string name="ui_repository_saved">"%1$s 설정을 저장했습니다."</string>
+    <string name="ui_user_prompt">"사용자 요청"</string>
+    <string name="ui_jules_agent">"Jules 에이전트"</string>
+    <string name="ui_exit_code">"종료 코드 %1$d"</string>
+    <string name="ui_repo_memory_hint">"AGENTS.md 규칙…"</string>
+    <string name="ui_repository_private">"비공개"</string>
+    <string name="ui_repository_public">"공개"</string>
+    <string name="ui_branches">"브랜치:"</string>
+    <string name="ui_active">"활성"</string>
+    <string name="ui_agent_label">"에이전트"</string>
+    <string name="ui_pr_open">"PR 열림"</string>
 </resources>
-

@@ -211,10 +211,15 @@ DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 #   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
 #     treated as '${Hostname}' itself on the command line.
 
+# 프로젝트 캐시와 기본 사용자 캐시를 .tools 아래로 모읍니다.
+GRADLE_USER_HOME=${GRADLE_USER_HOME:-"$APP_HOME/.tools/.build/kotlin/gradle"}
+export GRADLE_USER_HOME
+
 set -- \
         "-Dorg.gradle.appname=$APP_BASE_NAME" \
         -classpath "$CLASSPATH" \
         org.gradle.wrapper.GradleWrapperMain \
+        --project-cache-dir "$APP_HOME/.tools/.gradle" \
         "$@"
 
 # Stop when "xargs" is not available.

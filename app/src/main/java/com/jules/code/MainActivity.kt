@@ -13,9 +13,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import com.jules.code.ui.JulesLocaleManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,6 +36,7 @@ import com.jules.code.ui.theme.*
  * 딥링크(`https://jules.google.com/session/{id}`) 수신 및 모바일 반응형 하단 탭 네비게이션을 제공합니다.
  */
 class MainActivity : ComponentActivity() {
+    /** 저장된 화면 상태와 딥링크를 연결해 앱의 Compose 화면을 시작합니다. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -65,9 +69,17 @@ fun JulesMobileApp(
     val prefs by viewModel.preferences.collectAsState()
     val snackbarMsg by viewModel.snackbarMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val baseContext = LocalContext.current
+    val messageContext = remember(baseContext, prefs["app_language"]) {
+        JulesLocaleManager.createLocalizedContext(
+            baseContext,
+            JulesLocaleManager.resolveLocale(prefs["app_language"], JulesLocaleManager.configurationLocale(baseContext.resources.configuration))
+        ).first
+    }
 
-    var currentTab by remember { mutableIntStateOf(0) } // 0: 대시보드, 1: 세션, 2: 저장소(Sources), 3: 설정
-    var openedSessionId by remember { mutableStateOf(initialSessionId) }
+    // 글꼴·화면 크기·회전으로 Activity가 재생성되어도 보고 있던 화면을 복원합니다.
+    var currentTab by rememberSaveable { mutableIntStateOf(0) } // 0: 대시보드, 1: 세션, 2: 저장소(Sources), 3: 설정
+    var openedSessionId by rememberSaveable { mutableStateOf(initialSessionId) }
     var previousKeyId by remember { mutableStateOf<Long?>(null) }
 
     // 계정 전환 뒤 이전 계정의 상세 화면이 남지 않도록 닫습니다.
@@ -93,7 +105,7 @@ fun JulesMobileApp(
     }
 
     LaunchedEffect(snackbarMsg) {
-        val msg = snackbarMsg
+        val msg = snackbarMsg?.resolve(messageContext)
         if (!msg.isNullOrBlank()) {
             snackbarHostState.showSnackbar(msg)
             viewModel.clearSnackbar()

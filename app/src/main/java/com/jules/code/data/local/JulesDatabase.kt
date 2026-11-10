@@ -111,9 +111,6 @@ interface JulesDao {
     @Query("SELECT * FROM api_key_profiles WHERE isActive = 1 LIMIT 1")
     fun observeActiveApiKey(): Flow<ApiKeyEntity?>
 
-    @Query("SELECT * FROM api_key_profiles WHERE isActive = 1 LIMIT 1")
-    suspend fun getActiveApiKey(): ApiKeyEntity?
-
     @Query("SELECT * FROM api_key_profiles WHERE apiKey = :rawKey LIMIT 1")
     suspend fun findApiKeyByValue(rawKey: String): ApiKeyEntity?
 

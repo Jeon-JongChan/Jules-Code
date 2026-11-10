@@ -1,261 +1,196 @@
-<div align="center">
+﻿<div align="center">
 
-# 🐙 Jules Code (Android)
-**Google Jules 공식 REST API 기반 자율형 코딩 에이전트 모바일 클라이언트**  
-*(Autonomous Coding Agent Mobile Client powered by Google Jules official REST API)*
+# Jules Code
 
-[![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2026%2B)-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](https://android.com)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF.svg?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
-[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.10.01-4285F4.svg?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
-[![Material 3](https://img.shields.io/badge/Material%203-Expressive%20Dark-715CD7.svg?style=for-the-badge&logo=materialdesign&logoColor=white)](https://m3.material.io)
-[![Room DB](https://img.shields.io/badge/Storage-Room%202.6.1-FF8F00.svg?style=for-the-badge&logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
-[![License](https://img.shields.io/badge/License-Apache%202.0-00ACC1.svg?style=for-the-badge)](LICENSE)
+**스마트폰에서 Jules 코딩 작업을 시작하고, 계획·대화·코드 변경을 확인하세요.**<br>
+(Start Jules coding tasks from your phone and review plans, conversations, and code changes.)
 
-<br/>
+Google Jules REST API를 사용하는 비공식 Android 클라이언트입니다.<br>
+(An unofficial Android client for the Google Jules REST API.)
 
-**Jules Code**는 Google의 차세대 AI 자율 코딩 에이전트 서비스 [Google Jules](https://jules.google.com)를 안드로이드 스마트폰과 태블릿에서 완벽하게 제어할 수 있는 네이티브 모바일 애플리케이션입니다.  
-*(**Jules Code** is a native Android mobile application designed to seamlessly interact with and monitor [Google Jules](https://jules.google.com), Google's next-generation autonomous AI coding agent, directly from smartphones and tablets.)*
-
-언제 어디서나 스마트폰으로 GitHub 저장소를 연결하고, 이슈 해결을 지시하며, 에이전트와 대화하고, 제안된 계획을 검토하여 Pull Request 생성을 승인할 수 있습니다.  
-*(Assign coding tasks to connected GitHub repositories, chat directly with the agent, review proposed implementation plans, and approve pull requests anytime, anywhere.)*
+[주요 기능](#주요-기능-features) · [화면](#화면-screenshots) · [시작하기](#시작하기-getting-started) · [언어](#언어-languages) · [직접 빌드](#직접-빌드-build-from-source)<br>
+([Features](#주요-기능-features) · [Screenshots](#화면-screenshots) · [Getting started](#시작하기-getting-started) · [Languages](#언어-languages) · [Build from source](#직접-빌드-build-from-source))
 
 </div>
 
----
+## 왜 유용한가요? (Why use Jules Code?)
 
-## 📸 스크린샷 갤러리 (Screenshots Gallery)
+자리를 비운 동안에도 작업을 맡기고, 계획을 승인하고, 에이전트에게 수정 사항을 전달할 수 있습니다. 긴 로그와 코드 차이를 모바일에서 나눠 읽고, 여러 API 키의 작업을 오가며 진행 상황을 확인합니다.<br>
+(Assign tasks, approve plans, and send revisions to the agent while you are away from your desk. Read long logs and diffs in manageable sections on mobile, and switch between API key profiles to check progress.)
 
-실제 최신 빌드 Android 에뮬레이터 환경에서 구동된 Jules Code의 핵심 화면입니다.  
-*(Actual captured screenshots of Jules Code running the latest build on an Android emulator environment.)*
+API 키가 없어도 데모로 화면과 작업 흐름을 먼저 살펴볼 수 있습니다.<br>
+(Explore the screens and workflow in demo mode without an API key.)
 
-<table>
-  <tr>
-    <td align="center" width="25%">
-      <img src="assets/screenshots/01_onboarding.png" alt="온보딩 & API 키 등록 (Onboarding Screen)" width="100%"/><br/>
-      <b>01. 온보딩 & 키 등록</b><br/>
-      <i>(Onboarding & Key Vault)</i><br/>
-      <sub>Room DB 기반 API 키 등록 및 오프라인 데모 모드 지원<br/>(Local Room DB vault & instant demo mode)</sub>
-    </td>
-    <td align="center" width="25%">
-      <img src="assets/screenshots/02_dashboard.png" alt="대시보드 & 컴포저 독 (Dashboard & Composer Dock)" width="100%"/><br/>
-      <b>02. 대시보드 & 컴포저</b><br/>
-      <i>(Dashboard & Composer Dock)</i><br/>
-      <sub>24시간 롤링 쿼터 트래커 및 원터치 프롬프트 제안 칩<br/>(24h rolling quota tracker & quick suggestion chips)</sub>
-    </td>
-    <td align="center" width="25%">
-      <img src="assets/screenshots/03_sessions_list.png" alt="세션 목록 & 필터 (Sessions List & Filter)" width="100%"/><br/>
-      <b>03. 세션 목록 & 필터</b><br/>
-      <i>(Sessions Directory & Filter)</i><br/>
-      <sub>상태별 필터 칩, 세션 핀 고정 및 검색<br/>(State filter chips, pin-to-top & keyword search)</sub>
-    </td>
-    <td align="center" width="25%">
-      <img src="assets/screenshots/04_session_chat.png" alt="세션 대화 & 채팅 화면 (Session Chat & Activity)" width="100%"/><br/>
-      <b>04. 세션 대화 & 채팅</b><br/>
-      <i>(Session Chat & Live Feed)</i><br/>
-      <sub>사용자-에이전트 실시간 채팅, 계획 승인 배너 및 후속 지시 입력<br/>(Interactive agent chat, plan approval & follow-up prompt dock)</sub>
-    </td>
-  </tr>
-</table>
+## 화면 (Screenshots)
 
----
+1.3.0 디버그 빌드를 Android 15(API 35) 전용 에뮬레이터에서 직접 실행한 화면입니다. 세션·저장소·대화 내용은 오프라인 데모 데이터입니다.<br>
+(Captured directly from the 1.3.0 debug build running on a dedicated Android 15 / API 35 emulator. Sessions, repositories, and conversations contain offline demo data.)
 
-## ✨ 핵심 기능 (Key Features)
+| 작업 작성<br>(Task composer) | 세션 목록<br>(Session list) |
+|---|---|
+| <img src="assets/screenshots/release-20261110/02_dashboard_en.png" alt="저장소 선택과 작업 작성창 / Repository selection and task composer" width="320"> | <img src="assets/screenshots/release-20261110/03_sessions_en.png" alt="상태별 세션 목록과 저장소 정보 / Sessions by status and repository details" width="320"> |
+| **기본 요청 문구 설정**<br>(Default request text settings) | **한국어 설정**<br>(Settings in Korean) |
+| <img src="assets/screenshots/release-20261110/05_settings_en.png" alt="언어 선택과 기본 요청 문구 메뉴 / Language and default request text settings" width="320"> | <img src="assets/screenshots/release-20261110/06_settings_ko.png" alt="한국어로 표시한 설정과 기본 요청 문구 / Settings and default request text in Korean" width="320"> |
 
-### 1. 실시간 대화 & 세션 채팅 인터페이스 (Interactive Session Chat Interface)
-- **에이전트와의 실시간 상호작용 (Live Agent-User Conversation)**: 사용자 프롬프트와 Jules 에이전트의 사고 과정, 계획 생성 로그, 진행률(`progressUpdated`)을 직관적인 채팅 피드 형태로 모니터링합니다. *(Monitor user prompts, agent reasoning, plan generation, and live progress updates in an intuitive chat feed.)*
-- **실시간 후속 메시지 전송 (Instant Follow-up Prompting)**: 작업 진행 중 언제든지 하단 메시지 입력창을 통해 추가 지시나 수정 피드백을 전달(`POST :sendMessage`)할 수 있습니다. *(Dispatch real-time follow-up instructions or refinement requests directly through the bottom input dock.)*
-- **계획 검토 및 원터치 승인 (Plan Review & One-Tap Approval)**: 에이전트가 도출한 단계별 작업 계획을 검토하고 모바일에서 즉시 승인(`POST :approvePlan`)하여 코드 구현을 시작합니다. *(Review step-by-step execution plans proposed by the agent and approve them with a single tap to initiate code writing.)*
+<details>
+<summary>세션 타임라인과 아랍어 화면 보기 (View the session timeline and Arabic interface)</summary>
 
-### 2. Google Jules v1alpha REST API 풀 스택 연동 (Full Google Jules v1alpha REST API Support)
-- **저장소 및 브랜치 동기화 (Repository & Branch Sync)**: Google Jules에 연결된 GitHub 소스(`GET /v1alpha/sources`)와 활성 브랜치를 실시간으로 가져옵니다. *(Fetch connected GitHub sources and active branch lists in real time via official endpoints.)*
-- **자율 코딩 세션 생성 (Session Creation & Automation)**: 대상 저장소, 시작 브랜치, 계획 승인 필수 여부(`requirePlanApproval`), 자동 PR 생성 옵션을 지정하여 새로운 작업을 시작합니다. *(Launch sessions with custom branches, plan approval enforcement, and automated PR creation.)*
-- **Unified Diff & 터미널 로그 (Unified Diff & Terminal Logs)**: 파일별 코드 변경점과 클라우드 VM 콘솔 출력(Bash 로그)을 모바일 다크 모드 화면에서 상세하게 검토합니다. *(Inspect file diff syntax highlighting and cloud VM Bash execution logs directly on mobile.)*
-- **TTS 오디오 체인지로그 브리핑 (Audio TTS Changelog Briefing)**: Android 내장 TextToSpeech 엔진을 통해 에이전트의 활동 요약 및 변경 내역을 음성으로 브리핑받을 수 있습니다. *(Listen to voice summaries of session changelogs and activities powered by Android's native TextToSpeech engine.)*
+| 타임라인과 후속 초안<br>(Timeline and follow-up draft) | 아랍어 RTL<br>(Arabic RTL) |
+|---|---|
+| <img src="assets/screenshots/release-20261110/04_session_en.png" alt="활동 타임라인과 미리 표시된 기본 요청 문구 / Activity timeline with default request text shown in the draft" width="320"> | <img src="assets/screenshots/release-20261110/06_settings_ar.png" alt="오른쪽에서 왼쪽으로 배치된 아랍어 설정 / Arabic settings with a right-to-left layout" width="320"> |
 
-### 3. 모바일 친화적 인증 & 오프라인 데모 모드 (Mobile-First Authentication & Offline Demo)
-- **Room DB 기반 안전한 로컬 키 저장 (Encrypted Local Storage via Room DB)**: 복잡한 웹 OAuth 대신 `X-Goog-Api-Key`를 기기 내 SQLite Room 데이터베이스에 안전하게 보관합니다. *(Securely stores `X-Goog-Api-Key` credentials directly inside local SQLite via Room DB without web OAuth complexities.)*
-- **다중 프로필 원터치 전환 (Multi-Profile Instant Switching)**: 개인용/업무용 등 여러 개의 API 키를 라벨별로 관리하고 탭 한 번으로 전환합니다. *(Organize multiple API keys with custom labels and toggle between them instantly.)*
-- **100% 오프라인 데모 시뮬레이션 (Full Offline Demo Simulation Mode)**: API 키가 없는 사용자도 모든 화면 구성, 대시보드 컴포저, 실시간 채팅, 가상 세션 실행을 즉시 체험할 수 있습니다. *(Experience the complete UI, dashboard composer, live chat feed, and simulated sessions without requiring an actual API key.)*
+</details>
 
-### 4. 롤링 24시간 쿼터 트래커 (Rolling 24-Hour Quota Tracker)
-- **공식 롤링 윈도우 기준 실시간 분석 (Real-time Analysis based on 24h Rolling Window)**: 최근 24시간 동안 시작된 세션 타임스탬프를 정밀 계산하여 남은 일일 작업 횟수와 활성 동시 슬롯을 산출합니다. *(Calculates remaining daily sessions and concurrent execution slots based on session timestamps within the last 24 hours.)*
-- **티어별 한도 자동 반영 (Tier Limit Presets)**: `FREE` (일 15회 / 동시 3개), `PRO` (일 100회 / 동시 15개), `ULTRA` (일 300회 / 동시 60개) 한도 지원 및 실시간 프로그레스 바 제공. *(Presets for Free, Pro, and Ultra tiers with interactive status badges and progress indicators.)*
+## 주요 기능 (Features)
 
----
+| 기능<br>(Feature) | 어떻게 도움이 되나요?<br>(How does it help?) |
+|---|---|
+| 작업 시작<br>(Start tasks) | 연결된 저장소와 브랜치를 선택하고 작업을 요청합니다. 저장소 없는 작업도 지원합니다.<br>(Choose a connected repository and branch, then submit a task. Tasks without a repository are also supported.) |
+| 계획 승인과 후속 대화<br>(Plan approval and follow-up chat) | 실행 계획을 확인하고 승인하거나 추가 지시를 보냅니다.<br>(Review and approve execution plans, or send additional instructions.) |
+| 활동 타임라인<br>(Activity timeline) | 사용자 메시지와 에이전트 진행 상황을 시간순으로 확인합니다.<br>(Follow user messages and agent progress in chronological order.) |
+| 코드·터미널·미디어 보기<br>(Code, terminal, and media viewer) | 변경 파일, 패치, 명령 출력과 실제 API 첨부를 확인합니다. 긴 글은 구간별로 읽고 복사합니다.<br>(Inspect changed files, patches, command output, and attachments returned by the API. Read and copy long content in sections.) |
+| 여러 API 키<br>(Multiple API keys) | 프로필별로 키를 저장·전환하고 마지막 동기화 상태를 확인합니다.<br>(Save and switch API key profiles, and check their latest sync status.) |
+| 이용량 보기<br>(Usage estimates) | 최근 24시간의 조회된 세션과 선택한 요금제 기준으로 남은 작업량을 추정합니다. 서버의 청구·사용량 원장과 동일한 값은 아닙니다.<br>(Estimate remaining capacity from retrieved sessions in the past 24 hours and the selected plan. These estimates are separate from the server's billing and usage records.) |
+| 재사용 템플릿<br>(Reusable templates) | 자주 쓰는 작업 설명을 저장하고 작성창에 불러옵니다.<br>(Save frequently used task descriptions and load them into the composer.) |
+| 기본 요청 문구<br>(Default request text) | 직접 저장하고 활성화한 문구를 새 작업·후속 채팅 작성창에 미리 넣습니다. 전송 전에 수정하거나 삭제할 수 있습니다.<br>(Prepopulate new task and follow-up drafts with text you explicitly save and enable. Edit or remove it before sending.) |
+| 직접 삽입하는 요청<br>(Explicit instruction insertion) | 검토·CI·모델 선호·저장소 노트를 버튼으로 작성창에 넣습니다. 서버 기능을 켜는 스위치가 아니라 실제 본문에 보이는 요청입니다.<br>(Use buttons to insert review requests, CI instructions, model preferences, and repository notes into the composer. These are visible instructions in the message body rather than server feature switches.) |
+| 지연 진단<br>(Stall diagnostics) | 오랫동안 활동이 없거나 답변이 없는 세션을 구분해 보여주고 재촉·재시작을 돕습니다.<br>(Identify sessions with prolonged inactivity or unanswered messages, with options to nudge or restart them.) |
+| 오디오 요약<br>(Audio summaries) | 기기의 TTS 엔진으로 세션 요약을 들을 수 있습니다. 음성 제공 여부는 기기와 설치된 엔진에 따라 달라집니다.<br>(Listen to session summaries through your device's text-to-speech engine. Voice availability depends on the device and installed engine.) |
+| 오프라인 데모<br>(Offline demo) | 실제 키를 등록하기 전에 작업 시작·계획·대화·코드 보기 흐름을 체험합니다.<br>(Explore task creation, plans, conversations, and code views before registering a real API key.) |
 
-## 🏛️ 시스템 아키텍처 (System Architecture)
+**전송 원칙:** 작성창에 보이는 최종 본문을 그대로 보냅니다. 앱 표시 언어가 에이전트의 답변 언어를 정하지 않으며, 전송 시점에 숨은 언어·모델·미디어 지시를 추가하지 않습니다. 모델 선호 문장을 적어도 실제 모델 선택 가능 여부는 Jules가 결정합니다.<br>
+(**Sending policy:** The final text visible in the composer is sent as written. The app's display language does not determine the agent's reply language, and no hidden language, model, or media instructions are added when sending. Jules determines whether a requested model preference can be honored.)
 
-```mermaid
-flowchart TD
-    subgraph UI_Layer["프레젠테이션 계층 (Presentation Layer - Jetpack Compose)"]
-        MA["MainActivity (Single Activity / Deep Link Handler)"]
-        VM["JulesViewModel (StateFlow & Business Logic)"]
-        
-        MA --> VM
-        VM --> SCR_ONB["ApiKeyOnboardingScreen\n(API 키 등록 / 데모 체험)"]
-        VM --> SCR_DASH["DashboardScreen\n(통합 컴포저 독 & 쿼터 바)"]
-        VM --> SCR_SESS["SessionsListScreen\n(세션 목록 / 필터 / 고정)"]
-        VM --> SCR_CHAT["SessionDetailScreen\n(실시간 대화 피드 & 후속 메시지)"]
-    end
+## 시작하기 (Getting started)
 
-    subgraph Data_Layer["데이터 계층 (Data Layer)"]
-        ROOM[("Room DB (JulesDatabase)\n- ApiKeyEntity\n- CachedSessionEntity\n- CachedSourceEntity\n- ScheduledTemplateEntity\n- AppPreferenceEntity")]
-        CLIENT["JulesApiClient\n(HttpURLConnection + kotlinx.serialization)"]
-    end
+1. 이 저장소의 Releases에서 배포 APK를 받아 설치합니다. 새 배포가 없다면 아래 방법으로 직접 빌드합니다.<br>
+   (Download and install an APK from this repository's Releases. If no release is available, build it from source using the instructions below.)
 
-    subgraph External_Cloud["외부 클라우드 서비스 (External Cloud Services)"]
-        API["Google Jules REST API v1alpha\n(https://jules.googleapis.com)"]
-        WEB["Jules Web Console / GitHub PR\n(jules.google.com / github.com)"]
-    end
+2. Jules 웹 설정에서 API 키를 발급받습니다: [jules.google.com/settings](https://jules.google.com/settings).<br>
+   (Create an API key in the [Jules web settings](https://jules.google.com/settings).)
 
-    VM <-->|StateFlow 관찰 & 엔티티 갱신| ROOM
-    VM <-->|코루틴 비동기 호출| CLIENT
-    CLIENT <-->|HTTPS REST API| API
-    SCR_CHAT -.->|외부 브라우저 인텐트| WEB
-```
+3. 앱에 키를 입력하고 프로필을 저장합니다. 키 없이 둘러보려면 **데모 모드**를 선택합니다.<br>
+   (Enter the key in the app and save your profile. Choose **demo mode** to explore without a key.)
 
----
+4. 작업 설명과 저장소·브랜치를 선택합니다. 필요하면 계획 승인을 켜고 시작합니다.<br>
+   (Enter a task description and select a repository and branch. Enable plan approval if needed, then start the task.)
 
-## 🛠️ 기술 스택 (Tech Stack)
+5. 세션을 열어 계획을 승인하거나, 후속 채팅과 변경 내용을 확인합니다.<br>
+   (Open the session to approve its plan, send follow-up messages, and review changes.)
 
-| 구분 (Category) | 사용 기술 (Technologies Used) | 설명 (Description) |
-|---|---|---|
-| **언어 (Language)** | **Kotlin 2.0.21** | 모던 함수형 프로그래밍 및 타입 안전성 확보 *(Modern functional programming & type safety)* |
-| **UI 프레임워크 (UI)** | **Jetpack Compose (BOM 2024.10.01)** | 선언형 UI 렌더링 및 반응형 상태 바인딩 *(Declarative reactive UI rendering)* |
-| **디자인 시스템 (Design)** | **Material 3 (M3 Expressive Dark)** | 다크 옵시디언 테마 및 반응형 서피스 디자인 *(Obsidian Dark theme & responsive surface design)* |
-| **아키텍처 (Architecture)** | **MVVM + Single Activity** | 클린 아키텍처 기반 관심사 분리 *(Clean separation of concerns with AndroidX ViewModel)* |
-| **로컬 스토리지 (Storage)** | **Room DB 2.6.1 (SQLite)** | API 키, 캐시된 세션, 저장소 및 템플릿 영구 보관 *(Persistent local database via Room)* |
-| **비동기 & 스트림 (Async)** | **Kotlin Coroutines & Flow** | 논블로킹 네트워크 I/O 및 반응형 상태 전파 *(Non-blocking concurrency & reactive streams)* |
-| **네트워킹 (Networking)** | **Standard `HttpURLConnection`** | 외부 무거운 의존성을 배제한 가벼운 네이티브 통신 *(Ultra-lightweight stdlib HTTP client)* |
-| **직렬화 (Serialization)** | **`kotlinx.serialization` (JSON)** | 유연한 필드 파싱 및 고성능 JSON 디코딩 *(High-performance flexible JSON parsing)* |
-| **빌드 툴체인 (Build System)** | **Gradle 8.10 + AGP 8.7.0 + KSP** | 최신 안드로이드 빌드 파이프라인 *(Modern Android build pipeline)* |
+기본 요청 문구는 **설정 → 기본 요청 문구**에서 직접 작성·저장한 뒤 켭니다. 사용 중인 초안은 설정 변경으로 덮어쓰지 않으며, 새 초안에 저장된 문구를 적용합니다.<br>
+(Write and save your text under **Settings → Default request text**, then enable it. Settings changes leave existing drafts intact; saved text is applied to new drafts.)
 
----
+## 언어 (Languages)
 
-## 📂 프로젝트 구조 (Project Directory Structure)
+| 언어<br>(Language) | 표시<br>(Display name) |
+|---|---|
+| 한국어<br>(Korean) | 한국어<br>(Korean) |
+| 영어<br>(English) | English |
+| 스페인어<br>(Spanish) | Español |
+| 일본어<br>(Japanese) | 日本語 |
+| 포르투갈어<br>(Portuguese) | Português |
+| 프랑스어<br>(French) | Français |
+| 독일어<br>(German) | Deutsch |
+| 중국어 간체<br>(Simplified Chinese) | 简体中文 |
+| 힌디어<br>(Hindi) | हिन्दी |
+| 아랍어<br>(Arabic) | العربية |
+| 러시아어<br>(Russian) | Русский |
+| 인도네시아어<br>(Indonesian) | Bahasa Indonesia |
 
-```text
-Jules Code App/
-├── .build/                             # 격리형 포터블 빌드 킷 (JDK 21, Android SDK, Gradle 캐시)
-│   ├── kotlin.ps1                      # 포터블 개발 환경 통합 제어 PowerShell 스크립트
-│   └── test/                           # 테스트 및 자동화 검증 도구 모음
-│       ├── run_tests.ps1               # 단위/계측 테스트 통합 실행 스크립트
-│       ├── capture_and_ocr.py          # 에뮬레이터 화면 캡처 및 OCR 파이프라인
-│       ├── capture_hierarchy.py        # UI 컴포넌트 계층 덤프 도구
-│       └── README.md                   # 테스트 스크립트 가이드
-├── assets/
-│   └── screenshots/                    # 에뮬레이터에서 직접 캡처한 최신 UI 실기 스크린샷 4종
-│       ├── 01_onboarding.png           # 온보딩 및 API 키 등록 화면
-│       ├── 02_dashboard.png            # 메인 대시보드 & 컴포저 독
-│       ├── 03_sessions_list.png        # 세션 목록 및 필터링 화면
-│       └── 04_session_chat.png          # 세션 실시간 채팅 & 대화 화면
-├── app/
-│   ├── build.gradle.kts                # 의존성, SDK 버전(API 35), Room KSP 설정
-│   └── src/
-│       ├── androidTest/                # 에뮬레이터/실기기 대상 E2E UI 계측 테스트
-│       │   └── java/com/jules/code/JulesInstrumentedTest.kt
-│       ├── test/                       # 로컬 JVM 기반 단위 테스트
-│       │   └── java/com/jules/code/JulesApiParserTest.kt # API 파서, 시간순 정렬 및 외부 소스 단위 테스트
-│       └── main/
-│           ├── AndroidManifest.xml     # 앱 권한, 인텐트 필터, 브라우저 연동 패키지 가시성(queries)
-│           ├── java/com/jules/code/
-│           │   ├── MainActivity.kt     # 루트 액티비티, 딥링크 파싱 및 4탭 네비게이션 쉘
-│           │   ├── data/
-│           │   │   ├── local/          # Room DB 엔티티, DAO, 인스턴스 (JulesDatabase.kt)
-│           │   │   ├── model/          # 직렬화 모델 및 소스/타임스탬프 파서 (JulesModels.kt)
-│           │   │   └── remote/         # REST API 통신 엔진 (JulesApiClient.kt)
-│           │   └── ui/
-│           │       ├── JulesViewModel.kt # 전역 상태 Flow, 비즈니스 로직, 쿼터 계산기, 외부 소스 관리
-│           │       ├── JulesBrowserUtils.kt # 기본 브라우저 실행 및 GitHub 연동 유틸리티
-│           │       ├── JulesLocalization.kt # 앱 다국어(한국어/영어/시스템) 로케일 매니저
-│           │       ├── screens/        # 화면 컴포저블 모음
-│           │       │   ├── DashboardAndOnboardingScreens.kt # 대시보드 컴포저 독 및 온보딩
-│           │       │   ├── SessionDetailScreen.kt           # 실시간 채팅 피드, 계획 승인, 이미지 줌, 코드 Diff
-│           │       │   └── SessionsSourcesSettingsScreens.kt# 세션 목록, 외부 저장소 관리, 설정
-│           │       └── theme/          # Jules 고유 보라빛 옵시디언 테마 및 벡터 엠블럼 (JulesTheme.kt)
-│           └── res/                    # Adaptive Vector App Icon, 다국어 문자열 리소스
-├── build.gradle.kts                    # 최상위 루트 Gradle 빌드 스크립트
-├── settings.gradle.kts                 # 모듈 및 플러그인 리포지토리 구성
-└── README.md                           # 오픈소스 공식 프로젝트 안내 문서
-```
+기본 설정은 기기 언어를 따르며 지원하지 않는 언어는 영어로 표시합니다. 앱 안에서 수동으로 선택할 수 있고 아랍어는 오른쪽에서 왼쪽으로 표시합니다. 사용자·에이전트가 작성한 실제 대화와 코드·서버 오류 본문은 자동 번역하지 않습니다.<br>
+(The app follows your device language by default and falls back to English for unsupported languages. You can select a language in the app; Arabic uses a right-to-left layout. User and agent conversations, code, and server error messages are not automatically translated.)
 
----
+## Android 호환성 (Android compatibility)
 
-## 🚀 빠른 시작 & 빌드 가이드 (Getting Started & Build Guide)
+최소 Android 5.0(API 21), 대상 Android 16(API 36)으로 설정했습니다. 날짜 API의 하위 버전 지원과 구형 런처 아이콘을 포함합니다. 기기 제조사별 동작과 지원 음성·영상 코덱은 다를 수 있습니다.<br>
+(The minimum supported version is Android 5.0 / API 21, targeting Android 16 / API 36. Compatibility support includes date APIs on older versions and legacy launcher icons. Behavior and supported audio and video codecs may vary by device manufacturer.)
 
-본 프로젝트는 호스트 운영체제에 Android Studio나 전역 JDK를 설치하지 않고도, 완전히 격리된 환경에서 빌드 및 테스트를 수행할 수 있는 **포터블 빌드 킷**(`.build/kotlin.ps1`)을 제공합니다.  
-*(This project provides an isolated **portable build kit** (`.build/kotlin.ps1`), allowing you to build, test, and run without polluting host environments.)*
+| 검증 환경<br>(Test environment) | 확인한 범위<br>(Verified scope) |
+|---|---|
+| Android 5.0(API 21), 에뮬레이터<br>(Android 5.0 / API 21 emulator) | 설치·온보딩·Room 데모 데이터 생성·세션 타임라인<br>(Installation, onboarding, Room demo data creation, and session timeline) |
+| Android 15(API 35), 에뮬레이터<br>(Android 15 / API 35 emulator) | 설치·온보딩·데모·세션 타임라인·기본 문구 저장과 작성창 표시<br>(Installation, onboarding, demo mode, session timeline, and saving and displaying default request text) |
+| 12개 언어<br>(12 languages) | 실제 설정 메뉴 전환, 기기 언어 복귀, 아랍어 RTL 배치<br>(Language switching in settings, returning to the device language, and Arabic RTL layout) |
+| 360dp 화면, 글꼴 130%, 가로 화면<br>(360dp width, 130% font size, and landscape orientation) | 메뉴 접근, 화면 회전 후 탭과 작성 중인 요청 복원<br>(Menu access and restoration of the selected tab and draft after rotation) |
 
-### 1. 포터블 개발 환경 설치 (최초 1회) (Install Portable Toolchain - Once)
-PowerShell 콘솔을 열고 프로젝트 루트 경로에서 아래 명령을 실행합니다:  
-*(Open PowerShell at the project root and execute the following command:)*
+회귀 테스트 15개와 언어 리소스 검사를 통과했습니다. Android Lint는 오류 0개이며 개선 경고가 남아 있습니다. 실제 제조사 기기와 실제 API 키를 사용하는 온라인 작업은 이 검증 범위에 포함되지 않습니다.<br>
+(All 15 regression tests and the language resource check passed. Android Lint reported zero errors, with improvement warnings remaining. This validation does not cover physical devices from manufacturers or online tasks using a real API key.)
+
+[Android 5.0 실제 실행 화면](assets/screenshots/release-20261110/08_session_api21_en.png)에서 하위 버전의 타임라인 표시를 확인할 수 있습니다.<br>
+(See the [actual Android 5.0 screenshot](assets/screenshots/release-20261110/08_session_api21_en.png) for the timeline running on an older Android version.)
+
+## 앱과 웹의 역할 (App and web responsibilities)
+
+앱은 API가 제공하는 작업 생성·조회·삭제·계획 승인·메시지 전송을 사용합니다. 자동 예약, 저장소 VM 설정, 일시 중지·재개와 일부 수동 게시 작업은 Jules 웹에서 관리합니다. 저장소 노트는 웹 VM 설정 자체를 변경하지 않습니다.<br>
+(The app uses the API to create, retrieve, and delete tasks, approve plans, and send messages. Manage scheduling, repository VM settings, pause and resume actions, and some manual publishing operations on the Jules website. Repository notes do not change the web VM configuration.)
+
+API 키는 앱의 로컬 데이터베이스에 저장됩니다. 앱은 Google OAuth 로그인을 제공하지 않습니다. 데모의 저장소·대화·PR은 예시 데이터입니다.<br>
+(API keys are stored in the app's local database. The app does not offer Google OAuth sign-in. Demo repositories, conversations, and pull requests are sample data.)
+
+## 직접 빌드 (Build from source)
+
+필요한 환경은 JDK 21과 Android SDK입니다. Windows에서는 프로젝트 내부의 포터블 실행 스크립트를 사용할 수 있습니다.<br>
+(JDK 21 and the Android SDK are required. On Windows, you can use the portable launcher included in the project.)
 
 ```powershell
-# JDK 21, Android SDK (API 35, Build-Tools 35.0.0), ADB 격리 다운로드 및 라이선스 자동 동의
-powershell -ExecutionPolicy Bypass -File .\.build\kotlin.ps1 -Action install -AndroidApi 35 -BuildTools 35.0.0 -WithAdb -AcceptAndroidLicenses
+# 최초 설치: Android 라이선스 확인 후 동의
+# (First-time setup: review and accept the Android licenses.)
+powershell -ExecutionPolicy Bypass -File .\.tools\.build\kotlin.ps1 -Action install -AndroidApi 36 -BuildTools 36.0.0 -WithAdb -AcceptAndroidLicenses
+
+# 현재 세션에 도구 경로 적용
+# (Apply tool paths to the current shell session.)
+. .\.tools\.build\kotlin.ps1 -Action env
+
+# 빌드
+# (Build the app.)
+.\gradlew.bat assembleDebug assembleRelease
+
+# 회귀 검사
+# (Run regression checks.)
+.\gradlew.bat testDebugUnitTest lintDebug
+python .tools/.test/localization_check.py
 ```
 
-### 2. 세션 환경변수 활성화 (Activate Session Environment)
-빌드나 adb 명령을 실행할 터미널 세션에 포터블 환경을 로드합니다:  
-*(Export portable paths and toolchains to the current terminal session:)*
+APK는 `.tools/build/app/outputs/apk/`에 생성됩니다. 빌드·캐시·검증 로그·테스트 전용 파일은 `.tools/` 아래에 모읍니다. 앱 소스는 `app/src/main/`, README용 이미지는 `assets/screenshots/`에 있습니다.<br>
+(APKs are generated under `.tools/build/app/outputs/apk/`. Build outputs, caches, validation logs, and test-only files stay under `.tools/`. App sources are in `app/src/main/`, and README images are in `assets/screenshots/`.)
 
-```powershell
-. .\.build\kotlin.ps1 -Action env
-```
+릴리스 서명은 기존 키를 유지해야 같은 앱의 업데이트로 설치할 수 있습니다. 별도 키를 쓰려면 `JULES_KEYSTORE_PATH`, `JULES_KEYSTORE_PASSWORD`, `JULES_KEY_ALIAS`, `JULES_KEY_PASSWORD` 환경변수를 설정합니다. 키 파일을 저장소에 올리지 마세요.<br>
+(Keep the existing release signing key so new versions can be installed as updates to the same app. To use a different key, set `JULES_KEYSTORE_PATH`, `JULES_KEYSTORE_PASSWORD`, `JULES_KEY_ALIAS`, and `JULES_KEY_PASSWORD`. Do not commit key files to the repository.)
 
-### 3. APK 빌드 (Build Debug / Release APK)
-```powershell
-# 디버그 APK 빌드 (Build Debug APK)
-.\gradlew.bat assembleDebug
+## 코드 읽기 (Code guide)
 
-# 릴리즈 APK 빌드 (Build Release APK)
-.\gradlew.bat assembleRelease
+- `MainActivity`: 앱 진입, 화면 전환과 딥링크.<br>
+  (`MainActivity`: App entry, navigation, and deep links.)
 
-# 빌드 산출물 위치 (Build outputs directory):
-# app/build/outputs/apk/debug/Jules Code-debug.apk
-# app/build/outputs/apk/release/Jules Code.apk
-```
+- `JulesViewModel`: 화면 상태와 작업 흐름 조정.<br>
+  (`JulesViewModel`: UI state and task workflow coordination.)
 
-### 4. 테스트 실행 (Run Tests)
-```powershell
-# 로컬 JVM 단위 테스트 실행 (Run local JVM unit tests)
-.\gradlew.bat testDebugUnitTest
+- `SessionTimelineStore`: 활동 캐시·미반영 메시지·삭제 후 늦은 응답 처리.<br>
+  (`SessionTimelineStore`: Activity caching, pending messages, and late responses after deletion.)
 
-# 연결된 실기기 또는 에뮬레이터에서 E2E 계측 테스트 실행 (Run connected Android instrumented tests)
-.\gradlew.bat connectedDebugAndroidTest
-```
+- `JulesLocaleManager`, `UiText`, `SessionHealthText`: 언어 해석과 표시 문구.<br>
+  (`JulesLocaleManager`, `UiText`, `SessionHealthText`: Locale resolution and display text.)
 
-### 5. 에뮬레이터 생성 및 앱 실행 (Start Emulator & Run App)
-```powershell
-# 포터블 가상 기기(AVD) 다운로드 및 생성 (최초 1회)
-.\.build\kotlin.ps1 -Action emulator-install -AndroidApi 35 -SysImgType google_apis -Arch x86_64 -AvdName JulesPixel
+- `JulesApiClient`: HTTP 요청, 페이지 조회, 큰 활동·첨부의 파일 처리.<br>
+  (`JulesApiClient`: HTTP requests, pagination, and file handling for large activity content and attachments.)
 
-# 가상 기기 부팅 (Launch emulator)
-.\.build\kotlin.ps1 -Action emulator-start -AvdName JulesPixel
+- `JulesDatabase`: 키 프로필과 세션·저장소·템플릿의 로컬 저장.<br>
+  (`JulesDatabase`: Local storage for key profiles, sessions, repositories, and templates.)
 
-# APK 설치 및 앱 시작 (Install APK and start main activity)
-adb install -r "app\build\outputs\apk\debug\Jules Code-debug.apk"
-adb shell am start -n com.jules.code/.MainActivity
-```
+용어는 [GLOSSARY.md](GLOSSARY.md)에 정리했습니다.<br>
+(Project terminology is documented in [GLOSSARY.md](GLOSSARY.md).)
 
----
+## 문제 해결과 기여 (Troubleshooting and contributing)
 
-## 🔑 Jules API 키 발급 및 등록 (API Key Setup)
+오류를 제보할 때 Android 버전, 기종, 앱 버전과 재현 순서를 적어 주세요. API 키와 개인 저장소 정보는 지운 뒤 로그·화면을 공유해 주세요. 번역 수정 시에는 문자열 키와 `%1$s`, `%1$d` 같은 서식 인자를 유지해 주세요.<br>
+(When reporting an issue, include the Android version, device model, app version, and reproduction steps. Remove API keys and private repository information before sharing logs or screenshots. When editing translations, preserve string keys and format arguments such as `%1$s` and `%1$d`.)
 
-1. [Google AI Studio](https://aistudio.google.com/) 또는 Google Jules 공식 관리 페이지에서 Jules 접근 권한이 부여된 API 키를 발급받습니다.  
-   *(Generate an API key with Google Jules access privileges from Google AI Studio or Jules Console.)*
-2. Jules Code 앱 실행 시 나타나는 **온보딩 화면**에서 발급받은 키(`AQ...` 또는 `AIza...`)를 입력하고 **"API 키 저장 및 시작하기"**를 누릅니다.  
-   *(Input the key into the onboarding screen and tap "Save API Key and Start".)*
-3. 키가 없더라도 **"API 키 없이 데모 시뮬레이션 모드로 체험"** 버튼을 클릭하면 실제와 동일한 모의 환경에서 앱의 모든 기능을 둘러볼 수 있습니다.  
-   *(Click "Explore in Demo Simulation Mode" to evaluate all features with mock sessions without requiring an actual key.)*
-4. 등록된 키는 **설정 탭(Settings Tab)**에서 언제든지 별칭 수정, 추가 등록, 활성 키 전환 및 안전한 삭제가 가능합니다.  
-   *(Manage, toggle, or delete registered keys safely anytime via the Settings tab.)*
-
----
+문서 구성은 [Immich](https://github.com/immich-app/immich)와 [Readest](https://github.com/readest/readest)의 화면·기능·시작하기 흐름을 참고했으며 설명은 이 앱의 실제 기능을 기준으로 작성했습니다.<br>
+(The screenshot, feature, and getting-started structure was inspired by [Immich](https://github.com/immich-app/immich) and [Readest](https://github.com/readest/readest). Descriptions reflect this app's actual features.)
 
 ## 📄 라이선스 (License)
 
-본 프로젝트는 [Apache License 2.0](LICENSE) 라이선스를 따릅니다. 누구나 자유롭게 코드를 확인하고, 수정하며, 재배포할 수 있습니다.  
+본 프로젝트는 [Apache License 2.0](LICENSE) 라이선스를 따릅니다. 누구나 자유롭게 코드를 확인하고, 수정하며, 재배포할 수 있습니다.<br>
 *(This project is distributed under the terms of the Apache License 2.0. Feel free to inspect, modify, and distribute.)*
 
 ```text

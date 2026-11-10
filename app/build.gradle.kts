@@ -8,18 +8,17 @@ plugins {
 
 android {
     namespace = "com.jules.code"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.jules.code"
-        minSdk = 26
-        // ponytail: Android 14/15 기기에서 사이드로딩 시 targetSdk 35 제한 및 Play Protect 경고를 피하기 위해 targetSdk 34 설정 (compileSdk 35 유지)
-        targetSdk = 34
-        versionCode = 4
-        versionName = "1.2.1"
+        // 날짜 API의 역호환 구현과 함께 Android 5.0 이상을 지원합니다.
+        minSdk = 21
+        targetSdk = 36
+        versionCode = 5
+        versionName = "1.3.0"
         base.archivesName.set("Jules Code")
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -27,7 +26,7 @@ android {
 
     signingConfigs {
         create("release") {
-            val ksPath = System.getenv("JULES_KEYSTORE_PATH") ?: ".build/jules-release-key.jks"
+            val ksPath = System.getenv("JULES_KEYSTORE_PATH") ?: ".tools/.build/jules-release-key.jks"
             val ksFile = rootProject.file(ksPath)
             val ksPass = System.getenv("JULES_KEYSTORE_PASSWORD") ?: "julesrelease123"
             val kAlias = System.getenv("JULES_KEY_ALIAS") ?: "jules"
@@ -91,6 +90,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -103,6 +103,28 @@ android {
         compose = true
     }
 
+    // 앱 내 언어 전환 시 설치된 기기 언어 외 번역도 항상 사용할 수 있어야 합니다.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
+    // 향후 테스트를 추가해도 테스트 전용 입력이 app/src에 섞이지 않도록 분리합니다.
+    sourceSets {
+        getByName("test") {
+            java.setSrcDirs(listOf(rootProject.file(".tools/.test/unit/java")))
+            resources.setSrcDirs(listOf(rootProject.file(".tools/.test/unit/resources")))
+        }
+        getByName("androidTest") {
+            java.setSrcDirs(listOf(rootProject.file(".tools/.test/android/java")))
+            resources.setSrcDirs(listOf(rootProject.file(".tools/.test/android/resources")))
+            assets.setSrcDirs(listOf(rootProject.file(".tools/.test/android/assets")))
+            res.setSrcDirs(listOf(rootProject.file(".tools/.test/android/res")))
+            manifest.srcFile(rootProject.file(".tools/.test/android/AndroidManifest.xml"))
+        }
+    }
+
     packaging {
         jniLibs {
             useLegacyPackaging = true
@@ -113,7 +135,7 @@ android {
     }
 
     applicationVariants.all {
-        val vName = versionName ?: "1.2.0"
+        val vName = versionName ?: "1.3.0"
         outputs.all {
             (this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl)?.outputFileName =
                 if (buildType.name == "release") "Jules Code-v${vName}.apk" else "Jules Code-v${vName}-${buildType.name}.apk"
@@ -122,9 +144,10 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     val composeBom = platform("androidx.compose:compose-bom:2024.10.01")
     implementation(composeBom)
-    androidTestImplementation(composeBom)
 
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
@@ -132,10 +155,8 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.navigation:navigation-compose:2.8.4")
 
     // Room (API 키, 세션/소스 캐시, 로컬 프롬프트 템플릿/스케줄 저장)
     val roomVersion = "2.6.1"
@@ -149,12 +170,4 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
-    // Testing
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
