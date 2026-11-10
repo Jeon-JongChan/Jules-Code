@@ -314,4 +314,26 @@
     <string name="ui_audio_commands">"%1$d टर्मिनल कमांड चले; %2$d सफल हुए।"</string>
     <string name="ui_audio_commit">"नवीनतम कमिट का सारांश: %1$s।"</string>
     <string name="ui_audio_pull_request">"GitHub पुल रिक्वेस्ट बनाया गया: %1$s।"</string>
+    <string name="update_title">"ऐप अपडेट"</string>
+    <string name="update_current_version">"मौजूदा संस्करण: %1$s"</string>
+    <string name="update_play_description">"अपडेट Google Play से मिलते हैं। आपकी सहमति के बाद डाउनलोड शुरू होता है।"</string>
+    <string name="update_automatic">"नए संस्करण अपने आप जाँचें"</string>
+    <string name="update_idle">"Google Play पर अपडेट देखें।"</string>
+    <string name="update_checking">"अपडेट की जाँच हो रही है…"</string>
+    <string name="update_current">"आपका ऐप अप टू डेट है।"</string>
+    <string name="update_available">"नया संस्करण उपलब्ध है।"</string>
+    <string name="update_consent">"Google Play की पुष्टि का इंतज़ार है…"</string>
+    <string name="update_downloading">"अपडेट डाउनलोड हो रहा है…"</string>
+    <string name="update_ready">"अपडेट इंस्टॉल करने के लिए तैयार है।"</string>
+    <string name="update_installing">"अपडेट इंस्टॉल हो रहा है…"</string>
+    <string name="update_cancelled">"अपडेट रद्द किया गया। आप बाद में फिर कोशिश कर सकते हैं।"</string>
+    <string name="update_store_required">"ऐप के अंदर अपडेट पाने के लिए यह ऐप Google Play से इंस्टॉल करें।"</string>
+    <string name="update_error">"अपडेट की जाँच या इंस्टॉल नहीं हो सका। फिर कोशिश करें।"</string>
+    <string name="update_check">"अपडेट देखें"</string>
+    <string name="update_open_store">"Google Play खोलें"</string>
+    <string name="update_download">"अपडेट डाउनलोड करें"</string>
+    <string name="update_restart">"रीस्टार्ट करके इंस्टॉल करें"</string>
+    <string name="update_later">"बाद में"</string>
+    <string name="update_consent_description">"Google Play से नए संस्करण में अपडेट करें? आगे बढ़ने के लिए Google Play की पुष्टि स्क्रीन के निर्देशों का पालन करें।"</string>
+    <string name="update_restart_description">"अपडेट डाउनलोड हो गया है। जब तैयार हों, इंस्टॉल करने के लिए ऐप रीस्टार्ट करें।"</string>
 </resources>

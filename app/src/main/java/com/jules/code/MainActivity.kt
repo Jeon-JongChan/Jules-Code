@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -30,15 +31,19 @@ import com.jules.code.ui.JulesViewModel
 import com.jules.code.ui.ProvideJulesLocalization
 import com.jules.code.ui.screens.*
 import com.jules.code.ui.theme.*
+import com.jules.code.ui.updates.PlayUpdateHost
+import com.jules.code.ui.updates.PlayUpdateViewModel
 
 /**
  * Jules Code Android 앱의 진입점 액티비티입니다.
  * 딥링크(`https://jules.google.com/session/{id}`) 수신 및 모바일 반응형 하단 탭 네비게이션을 제공합니다.
  */
 class MainActivity : ComponentActivity() {
+    private lateinit var updates: PlayUpdateViewModel
     /** 저장된 화면 상태와 딥링크를 연결해 앱의 Compose 화면을 시작합니다. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        updates = androidx.lifecycle.ViewModelProvider(this, PlayUpdateViewModel.factory(applicationContext))[PlayUpdateViewModel::class.java]
         enableEdgeToEdge()
         val deepLinkSessionId = intent?.data?.pathSegments?.let { segs ->
             val idx = segs.indexOfFirst { it.equals("session", ignoreCase = true) || it.equals("sessions", ignoreCase = true) }
@@ -46,11 +51,20 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            JulesTheme {
-                val vm: JulesViewModel = viewModel(factory = JulesViewModel.factory(applicationContext))
-                JulesMobileApp(viewModel = vm, initialSessionId = deepLinkSessionId)
+            // 다국어 Context로 교체한 하위 화면에서도 Play 동의 결과를 원래 Activity에 연결합니다.
+            CompositionLocalProvider(LocalActivityResultRegistryOwner provides this@MainActivity) {
+                JulesTheme {
+                    val vm: JulesViewModel = viewModel(factory = JulesViewModel.factory(applicationContext))
+                    JulesMobileApp(viewModel = vm, updates = updates, initialSessionId = deepLinkSessionId)
+                }
             }
         }
+    }
+
+    /** 다운로드 대기 상태와 중단된 Play 업데이트를 화면 복귀 시 복구합니다. */
+    override fun onResume() {
+        super.onResume()
+        updates.onResume()
     }
 }
 
@@ -62,6 +76,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun JulesMobileApp(
     viewModel: JulesViewModel,
+    updates: PlayUpdateViewModel,
     initialSessionId: String? = null
 ) {
     val activeKey by viewModel.activeApiKey.collectAsState()
@@ -114,6 +129,7 @@ fun JulesMobileApp(
 
     // 첫 실행 시 저장된 활성 API 키가 없으면 즉시 온보딩 화면 노출
     ProvideJulesLocalization(langPref = prefs["app_language"]) {
+        PlayUpdateHost(updates)
         if (activeKey == null) {
             Scaffold(
                 snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -276,7 +292,7 @@ fun JulesMobileApp(
                         }
                     )
                     2 -> SourcesScreen(viewModel = viewModel)
-                    3 -> SettingsScreen(viewModel = viewModel)
+                    3 -> SettingsScreen(viewModel = viewModel, updates = updates)
                 } }
             }
         }

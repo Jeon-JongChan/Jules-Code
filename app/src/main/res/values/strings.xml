@@ -314,4 +314,26 @@ Refresh the activity to load it."</string>
     <string name="ui_active">"Active"</string>
     <string name="ui_agent_label">"Agent"</string>
     <string name="ui_pr_open">"PR open"</string>
+    <string name="update_title">"App updates"</string>
+    <string name="update_current_version">"Current version: %1$s"</string>
+    <string name="update_play_description">"Updates are provided by Google Play. Downloads start after your consent."</string>
+    <string name="update_automatic">"Check for new versions automatically"</string>
+    <string name="update_idle">"Check Google Play for updates."</string>
+    <string name="update_checking">"Checking for updates…"</string>
+    <string name="update_current">"Your app is up to date."</string>
+    <string name="update_available">"A new version is available."</string>
+    <string name="update_consent">"Waiting for Google Play confirmation…"</string>
+    <string name="update_downloading">"Downloading update…"</string>
+    <string name="update_ready">"The update is ready to install."</string>
+    <string name="update_installing">"Installing update…"</string>
+    <string name="update_cancelled">"Update cancelled. You can try again later."</string>
+    <string name="update_store_required">"Install this app from Google Play to use in-app updates."</string>
+    <string name="update_error">"Could not check or install the update. Please try again."</string>
+    <string name="update_check">"Check for updates"</string>
+    <string name="update_open_store">"Open Google Play"</string>
+    <string name="update_download">"Download update"</string>
+    <string name="update_restart">"Restart and install"</string>
+    <string name="update_later">"Later"</string>
+    <string name="update_consent_description">"Update to the new version through Google Play? Follow the Google Play confirmation screen to continue."</string>
+    <string name="update_restart_description">"The update has downloaded. Restart the app to install it when you are ready."</string>
 </resources>

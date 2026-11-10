@@ -50,6 +50,7 @@ API 키가 없어도 데모로 화면과 작업 흐름을 먼저 살펴볼 수 �
 | 활동 타임라인<br>(Activity timeline) | 사용자 메시지와 에이전트 진행 상황을 시간순으로 확인합니다.<br>(Follow user messages and agent progress in chronological order.) |
 | 코드·터미널·미디어 보기<br>(Code, terminal, and media viewer) | 변경 파일, 패치, 명령 출력과 실제 API 첨부를 확인합니다. 긴 글은 구간별로 읽고 복사합니다.<br>(Inspect changed files, patches, command output, and attachments returned by the API. Read and copy long content in sections.) |
 | 여러 API 키<br>(Multiple API keys) | 프로필별로 키를 저장·전환하고 마지막 동기화 상태를 확인합니다.<br>(Save and switch API key profiles, and check their latest sync status.) |
+| Google Play 업데이트<br>(Google Play updates) | 새 버전을 자동 또는 수동으로 확인하고, 동의 후 다운로드와 재시작 설치를 진행합니다.<br>(Check for new versions automatically or manually, then download with consent and restart to install.) |
 | 이용량 보기<br>(Usage estimates) | 최근 24시간의 조회된 세션과 선택한 요금제 기준으로 남은 작업량을 추정합니다. 서버의 청구·사용량 원장과 동일한 값은 아닙니다.<br>(Estimate remaining capacity from retrieved sessions in the past 24 hours and the selected plan. These estimates are separate from the server's billing and usage records.) |
 | 재사용 템플릿<br>(Reusable templates) | 자주 쓰는 작업 설명을 저장하고 작성창에 불러옵니다.<br>(Save frequently used task descriptions and load them into the composer.) |
 | 기본 요청 문구<br>(Default request text) | 직접 저장하고 활성화한 문구를 새 작업·후속 채팅 작성창에 미리 넣습니다. 전송 전에 수정하거나 삭제할 수 있습니다.<br>(Prepopulate new task and follow-up drafts with text you explicitly save and enable. Edit or remove it before sending.) |
@@ -80,6 +81,22 @@ API 키가 없어도 데모로 화면과 작업 흐름을 먼저 살펴볼 수 �
 
 기본 요청 문구는 **설정 → 기본 요청 문구**에서 직접 작성·저장한 뒤 켭니다. 사용 중인 초안은 설정 변경으로 덮어쓰지 않으며, 새 초안에 저장된 문구를 적용합니다.<br>
 (Write and save your text under **Settings → Default request text**, then enable it. Settings changes leave existing drafts intact; saved text is applied to new drafts.)
+
+## Google Play 업데이트 (Google Play updates)
+
+**설정 → 앱 업데이트**에서 현재 버전을 확인하고 자동 확인을 켜거나 수동으로 새 버전을 확인할 수 있습니다. 업데이트는 Google Play에서 제공하며, 동의 후 다운로드합니다. 다운로드가 끝나면 **재시작하여 설치**를 선택합니다.<br>
+(Under **Settings → App updates**, view the current version, enable automatic checks, or check manually. Google Play provides updates and starts downloading after your consent. Choose **Restart and install** when the download is ready.)
+
+앱 내 업데이트는 Google Play 설치본에서 지원합니다. 스토어 자체의 자동 업데이트 설정은 Google Play에서 관리합니다. 출시 전 실제 업데이트 검증에는 동일한 앱 ID·서명과 더 높은 버전 코드를 사용하는 Play 내부 테스트 또는 내부 앱 공유가 필요합니다.<br>
+(In-app updates are supported for Google Play installations. Google Play manages its own automatic update settings. Before release, validate real updates through Play internal testing or internal app sharing using the same application ID and signing identity and a higher version code.)
+
+설정 안내는 [Android 앱 내 업데이트 문서](https://developer.android.com/guide/playcore/in-app-updates), 검증 절차는 [공식 테스트 안내](https://developer.android.com/guide/playcore/in-app-updates/test)를 참고하세요.<br>
+(See the [Android in-app updates documentation](https://developer.android.com/guide/playcore/in-app-updates) for the update flow and the [official testing guide](https://developer.android.com/guide/playcore/in-app-updates/test) for validation.)
+
+실제 설정 화면입니다. Play 외부에서 설치한 검증 APK에는 스토어 설치 조건을 안내합니다.<br>
+(The actual settings screen. The test APK installed outside Google Play displays the store installation requirement.)
+
+<img src="assets/screenshots/release-20261110/10_play_updates_en.png" alt="현재 버전과 자동 확인·수동 확인·스토어 이동 메뉴 / Current version, automatic and manual checks, and Google Play link" width="320">
 
 ## 언어 (Languages)
 
@@ -113,8 +130,8 @@ API 키가 없어도 데모로 화면과 작업 흐름을 먼저 살펴볼 수 �
 | 12개 언어<br>(12 languages) | 실제 설정 메뉴 전환, 기기 언어 복귀, 아랍어 RTL 배치<br>(Language switching in settings, returning to the device language, and Arabic RTL layout) |
 | 360dp 화면, 글꼴 130%, 가로 화면<br>(360dp width, 130% font size, and landscape orientation) | 메뉴 접근, 화면 회전 후 탭과 작성 중인 요청 복원<br>(Menu access and restoration of the selected tab and draft after rotation) |
 
-회귀 테스트 15개와 언어 리소스 검사를 통과했습니다. Android Lint는 오류 0개이며 개선 경고가 남아 있습니다. 실제 제조사 기기와 실제 API 키를 사용하는 온라인 작업은 이 검증 범위에 포함되지 않습니다.<br>
-(All 15 regression tests and the language resource check passed. Android Lint reported zero errors, with improvement warnings remaining. This validation does not cover physical devices from manufacturers or online tasks using a real API key.)
+회귀 테스트 21개와 언어 리소스 검사를 통과했습니다. Android Lint는 오류 0개이며 개선 경고가 남아 있습니다. 실제 제조사 기기와 실제 API 키를 사용하는 온라인 작업은 이 검증 범위에 포함되지 않습니다.<br>
+(All 21 regression tests and the language resource check passed. Android Lint reported zero errors, with improvement warnings remaining. This validation does not cover physical devices from manufacturers or online tasks using a real API key.)
 
 [Android 5.0 실제 실행 화면](assets/screenshots/release-20261110/08_session_api21_en.png)에서 하위 버전의 타임라인 표시를 확인할 수 있습니다.<br>
 (See the [actual Android 5.0 screenshot](assets/screenshots/release-20261110/08_session_api21_en.png) for the timeline running on an older Android version.)
@@ -143,7 +160,7 @@ powershell -ExecutionPolicy Bypass -File .\.tools\.build\kotlin.ps1 -Action inst
 
 # 빌드
 # (Build the app.)
-.\gradlew.bat assembleDebug assembleRelease
+.\gradlew.bat assembleDebug assembleRelease bundleRelease
 
 # 회귀 검사
 # (Run regression checks.)
@@ -151,8 +168,8 @@ powershell -ExecutionPolicy Bypass -File .\.tools\.build\kotlin.ps1 -Action inst
 python .tools/.test/localization_check.py
 ```
 
-APK는 `.tools/build/app/outputs/apk/`에 생성됩니다. 빌드·캐시·검증 로그·테스트 전용 파일은 `.tools/` 아래에 모읍니다. 앱 소스는 `app/src/main/`, README용 이미지는 `assets/screenshots/`에 있습니다.<br>
-(APKs are generated under `.tools/build/app/outputs/apk/`. Build outputs, caches, validation logs, and test-only files stay under `.tools/`. App sources are in `app/src/main/`, and README images are in `assets/screenshots/`.)
+빌드가 완료되면 최종 APK와 서명 파일이 프로젝트의 `gradle/` 폴더에 자동 복사됩니다. `bundleRelease`로 만든 Google Play 제출용 AAB도 같은 폴더에 복사합니다. 원본 APK는 `.tools/build/app/outputs/apk/`, AAB는 `.tools/build/app/outputs/bundle/release/`에서 관리합니다. 빌드 중간 생성물·캐시·검증 로그·테스트 전용 파일은 `.tools/` 아래에 모읍니다. 앱 소스는 `app/src/main/`, README용 이미지는 `assets/screenshots/`에 있습니다.<br>
+(After a successful build, the final APK and signing sidecar are automatically copied to the project's `gradle/` folder. The AAB for Google Play submission, generated by `bundleRelease`, is copied there as well. Gradle manages original APKs under `.tools/build/app/outputs/apk/` and the AAB under `.tools/build/app/outputs/bundle/release/`. Intermediate build outputs, caches, validation logs, and test-only files stay under `.tools/`. App sources are in `app/src/main/`, and README images are in `assets/screenshots/`.)
 
 릴리스 서명은 기존 키를 유지해야 같은 앱의 업데이트로 설치할 수 있습니다. 별도 키를 쓰려면 `JULES_KEYSTORE_PATH`, `JULES_KEYSTORE_PASSWORD`, `JULES_KEY_ALIAS`, `JULES_KEY_PASSWORD` 환경변수를 설정합니다. 키 파일을 저장소에 올리지 마세요.<br>
 (Keep the existing release signing key so new versions can be installed as updates to the same app. To use a different key, set `JULES_KEYSTORE_PATH`, `JULES_KEYSTORE_PASSWORD`, `JULES_KEY_ALIAS`, and `JULES_KEY_PASSWORD`. Do not commit key files to the repository.)

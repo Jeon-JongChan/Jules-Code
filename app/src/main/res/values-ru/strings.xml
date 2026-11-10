@@ -314,4 +314,26 @@
     <string name="ui_audio_commands">"Выполнено %1$d команд; успешно: %2$d."</string>
     <string name="ui_audio_commit">"Сводка последнего коммита: %1$s."</string>
     <string name="ui_audio_pull_request">"Создан запрос на слияние GitHub: %1$s."</string>
+    <string name="update_title">"Обновления приложения"</string>
+    <string name="update_current_version">"Текущая версия: %1$s"</string>
+    <string name="update_play_description">"Обновления предоставляет Google Play. Загрузка начинается после вашего согласия."</string>
+    <string name="update_automatic">"Автоматически проверять новые версии"</string>
+    <string name="update_idle">"Проверьте обновления в Google Play."</string>
+    <string name="update_checking">"Проверка обновлений…"</string>
+    <string name="update_current">"Установлена последняя версия."</string>
+    <string name="update_available">"Доступна новая версия."</string>
+    <string name="update_consent">"Ожидание подтверждения Google Play…"</string>
+    <string name="update_downloading">"Загрузка обновления…"</string>
+    <string name="update_ready">"Обновление готово к установке."</string>
+    <string name="update_installing">"Установка обновления…"</string>
+    <string name="update_cancelled">"Обновление отменено. Можно повторить позже."</string>
+    <string name="update_store_required">"Установите приложение из Google Play, чтобы использовать встроенные обновления."</string>
+    <string name="update_error">"Не удалось проверить или установить обновление. Повторите попытку."</string>
+    <string name="update_check">"Проверить обновления"</string>
+    <string name="update_open_store">"Открыть Google Play"</string>
+    <string name="update_download">"Скачать обновление"</string>
+    <string name="update_restart">"Перезапустить и установить"</string>
+    <string name="update_later">"Позже"</string>
+    <string name="update_consent_description">"Обновить приложение до новой версии через Google Play? Для продолжения следуйте указаниям на экране подтверждения."</string>
+    <string name="update_restart_description">"Обновление загружено. Перезапустите приложение для установки, когда будете готовы."</string>
 </resources>

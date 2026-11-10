@@ -314,4 +314,26 @@ Segarkan aktivitas untuk memuatnya."</string>
     <string name="ui_audio_commands">"%1$d perintah terminal dijalankan; %2$d berhasil."</string>
     <string name="ui_audio_commit">"Ringkasan commit terbaru: %1$s."</string>
     <string name="ui_audio_pull_request">"Pull request GitHub telah dibuat: %1$s."</string>
+    <string name="update_title">"Pembaruan aplikasi"</string>
+    <string name="update_current_version">"Versi saat ini: %1$s"</string>
+    <string name="update_play_description">"Pembaruan disediakan oleh Google Play. Unduhan dimulai setelah persetujuan Anda."</string>
+    <string name="update_automatic">"Periksa versi baru secara otomatis"</string>
+    <string name="update_idle">"Periksa pembaruan di Google Play."</string>
+    <string name="update_checking">"Memeriksa pembaruan…"</string>
+    <string name="update_current">"Aplikasi sudah versi terbaru."</string>
+    <string name="update_available">"Versi baru tersedia."</string>
+    <string name="update_consent">"Menunggu konfirmasi Google Play…"</string>
+    <string name="update_downloading">"Mengunduh pembaruan…"</string>
+    <string name="update_ready">"Pembaruan siap dipasang."</string>
+    <string name="update_installing">"Memasang pembaruan…"</string>
+    <string name="update_cancelled">"Pembaruan dibatalkan. Anda dapat mencoba lagi nanti."</string>
+    <string name="update_store_required">"Pasang aplikasi ini dari Google Play untuk menggunakan pembaruan dalam aplikasi."</string>
+    <string name="update_error">"Tidak dapat memeriksa atau memasang pembaruan. Coba lagi."</string>
+    <string name="update_check">"Periksa pembaruan"</string>
+    <string name="update_open_store">"Buka Google Play"</string>
+    <string name="update_download">"Unduh pembaruan"</string>
+    <string name="update_restart">"Mulai ulang dan pasang"</string>
+    <string name="update_later">"Nanti"</string>
+    <string name="update_consent_description">"Perbarui ke versi baru melalui Google Play? Ikuti petunjuk pada layar konfirmasi untuk melanjutkan."</string>
+    <string name="update_restart_description">"Pembaruan telah diunduh. Mulai ulang aplikasi untuk memasangnya saat Anda siap."</string>
 </resources>

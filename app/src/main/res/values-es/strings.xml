@@ -314,4 +314,26 @@ Actualiza la actividad para cargarlo."</string>
     <string name="ui_audio_commands">"Se ejecutaron %1$d comandos; %2$d tuvieron éxito."</string>
     <string name="ui_audio_commit">"Resumen del último commit: %1$s."</string>
     <string name="ui_audio_pull_request">"Se creó un pull request en GitHub: %1$s."</string>
+    <string name="update_title">"Actualizaciones de la app"</string>
+    <string name="update_current_version">"Versión actual: %1$s"</string>
+    <string name="update_play_description">"Google Play proporciona las actualizaciones. La descarga comienza tras tu consentimiento."</string>
+    <string name="update_automatic">"Buscar nuevas versiones automáticamente"</string>
+    <string name="update_idle">"Busca actualizaciones en Google Play."</string>
+    <string name="update_checking">"Buscando actualizaciones…"</string>
+    <string name="update_current">"La app está actualizada."</string>
+    <string name="update_available">"Hay una nueva versión disponible."</string>
+    <string name="update_consent">"Esperando la confirmación de Google Play…"</string>
+    <string name="update_downloading">"Descargando actualización…"</string>
+    <string name="update_ready">"La actualización está lista para instalarse."</string>
+    <string name="update_installing">"Instalando actualización…"</string>
+    <string name="update_cancelled">"Actualización cancelada. Puedes intentarlo más tarde."</string>
+    <string name="update_store_required">"Instala esta app desde Google Play para usar las actualizaciones integradas."</string>
+    <string name="update_error">"No se pudo buscar o instalar la actualización. Inténtalo de nuevo."</string>
+    <string name="update_check">"Buscar actualizaciones"</string>
+    <string name="update_open_store">"Abrir Google Play"</string>
+    <string name="update_download">"Descargar actualización"</string>
+    <string name="update_restart">"Reiniciar e instalar"</string>
+    <string name="update_later">"Más tarde"</string>
+    <string name="update_consent_description">"¿Actualizar a la nueva versión mediante Google Play? Sigue las indicaciones de la pantalla de confirmación para continuar."</string>
+    <string name="update_restart_description">"La actualización se ha descargado. Reinicia la app cuando estés listo para instalarla."</string>
 </resources>

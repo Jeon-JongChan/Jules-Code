@@ -314,4 +314,26 @@ Atualize a atividade para carregar."</string>
     <string name="ui_audio_commands">"%1$d comandos executados; %2$d tiveram sucesso."</string>
     <string name="ui_audio_commit">"Resumo do último commit: %1$s."</string>
     <string name="ui_audio_pull_request">"Um pull request do GitHub foi criado: %1$s."</string>
+    <string name="update_title">"Atualizações do app"</string>
+    <string name="update_current_version">"Versão atual: %1$s"</string>
+    <string name="update_play_description">"As atualizações são fornecidas pelo Google Play. O download começa após seu consentimento."</string>
+    <string name="update_automatic">"Verificar novas versões automaticamente"</string>
+    <string name="update_idle">"Verifique atualizações no Google Play."</string>
+    <string name="update_checking">"Verificando atualizações…"</string>
+    <string name="update_current">"O app está atualizado."</string>
+    <string name="update_available">"Uma nova versão está disponível."</string>
+    <string name="update_consent">"Aguardando confirmação do Google Play…"</string>
+    <string name="update_downloading">"Baixando atualização…"</string>
+    <string name="update_ready">"A atualização está pronta para instalar."</string>
+    <string name="update_installing">"Instalando atualização…"</string>
+    <string name="update_cancelled">"Atualização cancelada. Você pode tentar novamente mais tarde."</string>
+    <string name="update_store_required">"Instale este app pelo Google Play para usar atualizações no app."</string>
+    <string name="update_error">"Não foi possível verificar ou instalar a atualização. Tente novamente."</string>
+    <string name="update_check">"Verificar atualizações"</string>
+    <string name="update_open_store">"Abrir Google Play"</string>
+    <string name="update_download">"Baixar atualização"</string>
+    <string name="update_restart">"Reiniciar e instalar"</string>
+    <string name="update_later">"Mais tarde"</string>
+    <string name="update_consent_description">"Atualizar para a nova versão pelo Google Play? Siga as instruções da tela de confirmação para continuar."</string>
+    <string name="update_restart_description">"O download da atualização foi concluído. Reinicie o app quando estiver pronto para instalar."</string>
 </resources>

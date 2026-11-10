@@ -314,4 +314,26 @@
     <string name="ui_audio_commands">"执行了%1$d条终端命令，其中%2$d条成功。"</string>
     <string name="ui_audio_commit">"最新提交摘要：%1$s。"</string>
     <string name="ui_audio_pull_request">"已创建GitHub拉取请求：%1$s。"</string>
+    <string name="update_title">"应用更新"</string>
+    <string name="update_current_version">"当前版本：%1$s"</string>
+    <string name="update_play_description">"更新由 Google Play 提供，获得您的同意后开始下载。"</string>
+    <string name="update_automatic">"自动检查新版本"</string>
+    <string name="update_idle">"在 Google Play 中检查更新。"</string>
+    <string name="update_checking">"正在检查更新…"</string>
+    <string name="update_current">"应用已是最新版本。"</string>
+    <string name="update_available">"有新版本可用。"</string>
+    <string name="update_consent">"正在等待 Google Play 确认…"</string>
+    <string name="update_downloading">"正在下载更新…"</string>
+    <string name="update_ready">"更新已准备好安装。"</string>
+    <string name="update_installing">"正在安装更新…"</string>
+    <string name="update_cancelled">"更新已取消，您可以稍后重试。"</string>
+    <string name="update_store_required">"请从 Google Play 安装此应用以使用应用内更新。"</string>
+    <string name="update_error">"无法检查或安装更新，请重试。"</string>
+    <string name="update_check">"检查更新"</string>
+    <string name="update_open_store">"打开 Google Play"</string>
+    <string name="update_download">"下载更新"</string>
+    <string name="update_restart">"重启并安装"</string>
+    <string name="update_later">"稍后"</string>
+    <string name="update_consent_description">"是否通过 Google Play 更新到新版本？请按照 Google Play 确认页面的提示继续操作。"</string>
+    <string name="update_restart_description">"更新已下载完成，请在准备好后重启应用以安装更新。"</string>
 </resources>

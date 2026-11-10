@@ -507,7 +507,7 @@ private fun SourceItemCard(
  * Room DB 기반으로 구현한 설정 화면입니다.
  */
 @Composable
-fun SettingsScreen(viewModel: JulesViewModel) {
+fun SettingsScreen(viewModel: JulesViewModel, updates: com.jules.code.ui.updates.PlayUpdateViewModel) {
     val context = LocalContext.current
     val apiKeys by viewModel.apiKeys.collectAsState()
     val activeKey by viewModel.activeApiKey.collectAsState()
@@ -596,6 +596,10 @@ fun SettingsScreen(viewModel: JulesViewModel) {
 
         item {
             DefaultPromptSettings(prefs) { name, value -> viewModel.updatePreference(name, value) }
+        }
+
+        item {
+            com.jules.code.ui.updates.PlayUpdateSettings(updates)
         }
 
         // 1. API 남은 작업량(Quota) 및 요금제 티어 설정 섹션

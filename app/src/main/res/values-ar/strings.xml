@@ -314,4 +314,26 @@
     <string name="ui_audio_commands">"تم تنفيذ %1$d أوامر طرفية؛ نجح منها %2$d."</string>
     <string name="ui_audio_commit">"ملخص آخر التزام: %1$s."</string>
     <string name="ui_audio_pull_request">"تم إنشاء طلب سحب على GitHub: %1$s."</string>
+    <string name="update_title">"تحديثات التطبيق"</string>
+    <string name="update_current_version">"الإصدار الحالي: %1$s"</string>
+    <string name="update_play_description">"تتوفر التحديثات عبر Google Play. يبدأ التنزيل بعد موافقتك."</string>
+    <string name="update_automatic">"البحث تلقائيًا عن إصدارات جديدة"</string>
+    <string name="update_idle">"تحقق من التحديثات عبر Google Play."</string>
+    <string name="update_checking">"جارٍ البحث عن تحديثات…"</string>
+    <string name="update_current">"التطبيق محدّث."</string>
+    <string name="update_available">"يتوفر إصدار جديد."</string>
+    <string name="update_consent">"بانتظار تأكيد Google Play…"</string>
+    <string name="update_downloading">"جارٍ تنزيل التحديث…"</string>
+    <string name="update_ready">"التحديث جاهز للتثبيت."</string>
+    <string name="update_installing">"جارٍ تثبيت التحديث…"</string>
+    <string name="update_cancelled">"تم إلغاء التحديث. يمكنك المحاولة لاحقًا."</string>
+    <string name="update_store_required">"ثبّت هذا التطبيق من Google Play لاستخدام التحديثات داخل التطبيق."</string>
+    <string name="update_error">"تعذر البحث عن التحديث أو تثبيته. حاول مجددًا."</string>
+    <string name="update_check">"البحث عن تحديثات"</string>
+    <string name="update_open_store">"فتح Google Play"</string>
+    <string name="update_download">"تنزيل التحديث"</string>
+    <string name="update_restart">"إعادة التشغيل والتثبيت"</string>
+    <string name="update_later">"لاحقًا"</string>
+    <string name="update_consent_description">"هل تريد التحديث إلى الإصدار الجديد عبر Google Play؟ اتبع إرشادات شاشة التأكيد للمتابعة."</string>
+    <string name="update_restart_description">"اكتمل تنزيل التحديث. أعد تشغيل التطبيق لتثبيته عندما تكون مستعدًا."</string>
 </resources>

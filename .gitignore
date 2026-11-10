@@ -16,6 +16,7 @@ build/
 app/build/
 local.properties
 *.apk
+gradle/*.apk.idsig
 *.aab
 *.jks
 *.keystore

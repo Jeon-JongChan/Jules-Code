@@ -17,6 +17,7 @@ android {
         targetSdk = 36
         versionCode = 5
         versionName = "1.3.0"
+        testInstrumentationRunner = "com.jules.code.PlayUpdateInstrumentation"
         base.archivesName.set("Jules Code")
 
         vectorDrawables {
@@ -140,10 +141,38 @@ android {
             (this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl)?.outputFileName =
                 if (buildType.name == "release") "Jules Code-v${vName}.apk" else "Jules Code-v${vName}-${buildType.name}.apk"
         }
+
+        val apkDirectory = layout.buildDirectory.dir("outputs/apk/$dirName")
+        val distributionDirectory = rootProject.layout.projectDirectory.dir("gradle")
+        assembleProvider.configure {
+            // 성공한 빌드의 최종 파일만 전달하고 원본을 유지해 증분 빌드의 출력 추적을 보존합니다.
+            doLast {
+                project.copy {
+                    from(apkDirectory) {
+                        include("*.apk", "*.apk.idsig")
+                    }
+                    into(distributionDirectory)
+                }
+            }
+        }
+    }
+}
+
+// Play Console에 올릴 릴리스 번들도 최종 배포 파일과 같은 위치에서 받습니다.
+tasks.matching { it.name == "bundleRelease" }.configureEach {
+    doLast {
+        project.copy {
+            from(layout.buildDirectory.dir("outputs/bundle/release")) {
+                include("*.aab")
+                rename { "Jules Code-v${android.defaultConfig.versionName}.aab" }
+            }
+            into(rootProject.layout.projectDirectory.dir("gradle"))
+        }
     }
 }
 
 dependencies {
+    implementation("com.google.android.play:app-update:2.1.0")
     testImplementation("junit:junit:4.13.2")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     val composeBom = platform("androidx.compose:compose-bom:2024.10.01")

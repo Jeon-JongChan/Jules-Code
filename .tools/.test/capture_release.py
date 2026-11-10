@@ -46,9 +46,16 @@ def tap_text(text, timeout=30):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         root = hierarchy()
+        parents = {child: parent for parent in root.iter() for child in parent}
         for node in root.iter("node"):
             if node.attrib.get("text") == text or node.attrib.get("content-desc") == text:
-                points = [int(value) for value in re.findall(r"\d+", node.attrib["bounds"])]
+                # 선택 가능한 텍스트가 클릭을 소비하지 않도록 실제 버튼·메뉴 영역을 누릅니다.
+                target = node
+                while target.attrib.get("clickable") != "true" and target in parents:
+                    target = parents[target]
+                if "bounds" not in target.attrib:
+                    target = node
+                points = [int(value) for value in re.findall(r"\d+", target.attrib["bounds"])]
                 if len(points) == 4 and points[2] > points[0] and points[3] > points[1]:
                     adb("shell", "input", "tap", str((points[0] + points[2]) // 2), str((points[1] + points[3]) // 2))
                     time.sleep(0.8)

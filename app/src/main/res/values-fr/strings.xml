@@ -314,4 +314,26 @@ Actualisez l’activité pour la charger."</string>
     <string name="ui_audio_commands">"%1$d commandes exécutées ; %2$d réussies."</string>
     <string name="ui_audio_commit">"Résumé du dernier commit : %1$s."</string>
     <string name="ui_audio_pull_request">"Une pull request GitHub a été créée : %1$s."</string>
+    <string name="update_title">"Mises à jour de l’application"</string>
+    <string name="update_current_version">"Version actuelle : %1$s"</string>
+    <string name="update_play_description">"Les mises à jour sont fournies par Google Play. Le téléchargement commence après votre accord."</string>
+    <string name="update_automatic">"Rechercher les nouvelles versions automatiquement"</string>
+    <string name="update_idle">"Recherchez des mises à jour sur Google Play."</string>
+    <string name="update_checking">"Recherche de mises à jour…"</string>
+    <string name="update_current">"L’application est à jour."</string>
+    <string name="update_available">"Une nouvelle version est disponible."</string>
+    <string name="update_consent">"En attente de confirmation de Google Play…"</string>
+    <string name="update_downloading">"Téléchargement de la mise à jour…"</string>
+    <string name="update_ready">"La mise à jour est prête à être installée."</string>
+    <string name="update_installing">"Installation de la mise à jour…"</string>
+    <string name="update_cancelled">"Mise à jour annulée. Vous pourrez réessayer plus tard."</string>
+    <string name="update_store_required">"Installez cette application depuis Google Play pour utiliser les mises à jour intégrées."</string>
+    <string name="update_error">"Impossible de rechercher ou d’installer la mise à jour. Réessayez."</string>
+    <string name="update_check">"Rechercher des mises à jour"</string>
+    <string name="update_open_store">"Ouvrir Google Play"</string>
+    <string name="update_download">"Télécharger la mise à jour"</string>
+    <string name="update_restart">"Redémarrer et installer"</string>
+    <string name="update_later">"Plus tard"</string>
+    <string name="update_consent_description">"Mettre à jour vers la nouvelle version via Google Play ? Suivez les instructions de l’écran de confirmation pour continuer."</string>
+    <string name="update_restart_description">"La mise à jour est téléchargée. Redémarrez l’application pour l’installer lorsque vous le souhaitez."</string>
 </resources>
